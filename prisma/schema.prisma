@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUM types
+enum ProblemComplexity {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SubmissionStatus {
+  PENDING
+  PASSED
+  FAILED
+  ERROR
+}
+
+enum ResourceType {
+  BOOK_CHAPTER
+  COURSE_LECTURE
+  ARTICLE
+  VIDEO
+  PAPER
+}
+
+// User model
+model User {
+  id         String   @id // Auth0 User ID
+  email      String   @unique
+  name       String?
+  pictureUrl String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  submissions        Submission[]
+  customProblems     Problem[]      @relation("CustomProblems")
+  solvedProblems     SolvedProblem[]
+
+  @@map("users")
+}
+
+// Topic model
+model Topic {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  problems           Problem[]
+  prerequisiteFor    TopicDependency[] @relation("PrerequisiteTopic")
+  dependsOn          TopicDependency[] @relation("DependentTopic")
+  topicResources     TopicResourceLink[]
+
+  @@map("topics")
+}
+
+// Problem model
+model Problem {
+  id                String           @id @default(uuid())
+  title             String
+  description       String
+  complexity        ProblemComplexity
+  topicId           Int              @map("topic_id")
+  isCustom          Boolean          @default(false) @map("is_custom")
+  createdByUserId   String?          @map("created_by_user_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  topic             Topic            @relation(fields: [topicId], references: [id])
+  createdByUser     User?            @relation("CustomProblems", fields: [createdByUserId], references: [id])
+  testCases         TestCase[]
+  submissions       Submission[]
+  solvedProblems    SolvedProblem[]
+
+  @@map("problems")
+}
+
+// Test Case model
+model TestCase {
+  id             Int      @id @default(autoincrement())
+  problemId      String   @map("problem_id")
+  input          String
+  expectedOutput String   @map("expected_output")
+  isHidden       Boolean  @default(false) @map("is_hidden")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  problem        Problem      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  failedSubmissions Submission[] @relation("FailedTestCase")
+
+  @@unique([problemId, input])
+  @@map("test_cases")
+}
+
+// Submission model
+model Submission {
+  id                 String          @id @default(uuid())
+  userId             String          @map("user_id")
+  problemId          String          @map("problem_id")
+  code               String
+  language           String
+  status             SubmissionStatus @default(PENDING)
+  failedTestCaseId   Int?            @map("failed_test_case_id")
+  submittedAt        DateTime        @default(now()) @map("submitted_at")
+
+  // Relations
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem            Problem         @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  failedTestCase     TestCase?       @relation("FailedTestCase", fields: [failedTestCaseId], references: [id])
+
+  @@map("submissions")
+}
+
+// Learning Resource model
+model LearningResource {
+  id        Int          @id @default(autoincrement())
+  type      ResourceType
+  title     String
+  url       String       @unique
+  metadata  Json?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  topicResources TopicResourceLink[]
+
+  @@map("learning_resources")
+}
+
+// Topic Dependency model (Learning Graph)
+model TopicDependency {
+  prerequisiteTopicId Int    @map("prerequisite_topic_id")
+  dependentTopicId    Int    @map("dependent_topic_id")
+
+  // Relations
+  prerequisiteTopic   Topic  @relation("PrerequisiteTopic", fields: [prerequisiteTopicId], references: [id], onDelete: Cascade)
+  dependentTopic      Topic  @relation("DependentTopic", fields: [dependentTopicId], references: [id], onDelete: Cascade)
+
+  @@id([prerequisiteTopicId, dependentTopicId])
+  @@map("topic_dependencies")
+}
+
+// Topic-Resource Link model
+model TopicResourceLink {
+  topicId    Int @map("topic_id")
+  resourceId Int @map("resource_id")
+
+  // Relations
+  topic      Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  resource   LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([topicId, resourceId])
+  @@map("topic_resources_link")
+}
+
+// Solved Problem model (for tracking user progress)
+model SolvedProblem {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  problemId  String   @map("problem_id")
+  solvedAt   DateTime @default(now()) @map("solved_at")
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem    Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@map("solved_problems")
+} 
