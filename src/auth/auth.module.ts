@@ -10,7 +10,10 @@ import { Auth0Strategy } from './strategies/auth0.strategy';
 
 @Module({
   imports: [
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ 
+      defaultStrategy: 'jwt',
+      session: false, // Disable sessions for stateless API
+    }),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

@@ -29,10 +29,16 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { sub: user.id, email: user.email };
+    // Return the Auth0 access token instead of creating a local JWT
     return {
-      access_token: this.jwtService.sign(payload),
-      user,
+      access_token: user.auth0AccessToken,
+      token_type: 'Bearer',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        pictureUrl: user.pictureUrl,
+      },
     };
   }
 } 

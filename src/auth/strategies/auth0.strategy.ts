@@ -32,6 +32,7 @@ export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
       clientSecret: configService.get('auth.auth0.clientSecret'),
       callbackURL: configService.get('auth.auth0.callbackUrl'),
       scope: 'openid email profile',
+      state: false,
     });
   }
 
@@ -48,6 +49,13 @@ export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
       profile.displayName,
       profile.picture,
     );
-    done(null, user);
+    
+    // Attach the Auth0 access token to the user object
+    const userWithToken = {
+      ...user,
+      auth0AccessToken: accessToken,
+    };
+    
+    done(null, userWithToken);
   }
 } 
