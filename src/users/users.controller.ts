@@ -1,5 +1,5 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -7,17 +7,21 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get user by ID' })
-  @ApiResponse({ status: 200, description: 'User found' })
-  async findById(@Param('id') id: string) {
-    return this.usersService.findById(id);
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my profile' })
+  @ApiResponse({ status: 200, description: 'User profile retrieved' })
+  async getMyProfile(@Req() req: any) {
+    const userId = req.user.id;
+    return this.usersService.findById(userId);
   }
 
-  @Get(':id/stats')
-  @ApiOperation({ summary: 'Get user statistics' })
+  @Get('me/stats')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my statistics' })
   @ApiResponse({ status: 200, description: 'User statistics retrieved' })
-  async getUserStats(@Param('id') id: string) {
-    return this.usersService.getUserStats(id);
+  async getMyStats(@Req() req: any) {
+    const userId = req.user.id;
+    return this.usersService.getUserStats(userId);
   }
 } 
