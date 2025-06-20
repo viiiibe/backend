@@ -2,6 +2,7 @@ import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth.service';
+import { Public } from '../decorators/public.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -9,6 +10,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Get('login')
+  @Public()
   @UseGuards(AuthGuard('auth0'))
   @ApiOperation({ summary: 'Login with Auth0' })
   login() {
@@ -16,6 +18,7 @@ export class AuthController {
   }
 
   @Get('callback')
+  @Public()
   @UseGuards(AuthGuard('auth0'))
   @ApiOperation({ summary: 'Auth0 callback' })
   @ApiResponse({ status: 200, description: 'Login successful' })
