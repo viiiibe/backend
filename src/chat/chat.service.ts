@@ -28,14 +28,10 @@ export class ChatService {
     console.log('response', response);
     console.log('actions', actions);
 
-    // Execute any MCP actions if present
+    // Enhance response with MCP results if any actions were executed
     let enhancedResponse = response;
     if (actions && actions.length > 0) {
-      enhancedResponse = await this.executeMCPActions(
-        actions,
-        response,
-        userId,
-      );
+      enhancedResponse = this.enhanceResponseWithMCPResults(response, actions);
     }
 
     // Store the message in the database
@@ -73,71 +69,43 @@ export class ChatService {
     return messages.reverse();
   }
 
-  private async executeMCPActions(
-    actions: Array<{ functionName: string; args: any }>,
+  private enhanceResponseWithMCPResults(
     originalResponse: string,
-    userId: string,
-  ): Promise<string> {
+    actions: Array<{ functionName: string; args: any; result?: any; success: boolean; error?: string }>,
+  ): string {
     try {
-      const results = [];
+      const successfulResults = actions.filter((r) => r.success);
+      const failedResults = actions.filter((r) => !r.success);
 
-      for (const action of actions) {
-        try {
-          const result = await this.mcpService.handleMCPCall(
-            action.functionName,
-            { ...action.args, userId },
-          );
-          results.push({
-            functionName: action.functionName,
-            result,
-            success: true,
-          });
-        } catch (error) {
-          results.push({
-            functionName: action.functionName,
-            error: error.message || 'Function execution failed',
-            success: false,
-          });
-        }
+      let enhancedResponse = originalResponse;
+
+      if (successfulResults.length > 0) {
+        const resultsText = successfulResults
+          .map((r) => {
+            const resultStr =
+              typeof r.result === 'object'
+                ? JSON.stringify(r.result, null, 2)
+                : String(r.result);
+            return `**${r.functionName}**:\n${resultStr}`;
+          })
+          .join('\n\n');
+
+        enhancedResponse += `\n\n--- MCP Results ---\n${resultsText}`;
       }
 
-      // If we have results, enhance the response
-      if (results.length > 0) {
-        const successfulResults = results.filter((r) => r.success);
-        const failedResults = results.filter((r) => !r.success);
+      if (failedResults.length > 0) {
+        const errorText = failedResults
+          .map((r) => `**${r.functionName}**: Error - ${r.error}`)
+          .join('\n');
 
-        let enhancedResponse = originalResponse;
-
-        if (successfulResults.length > 0) {
-          const resultsText = successfulResults
-            .map((r) => {
-              const resultStr =
-                typeof r.result === 'object'
-                  ? JSON.stringify(r.result, null, 2)
-                  : String(r.result);
-              return `**${r.functionName}**:\n${resultStr}`;
-            })
-            .join('\n\n');
-
-          enhancedResponse += `\n\n--- MCP Results ---\n${resultsText}`;
-        }
-
-        if (failedResults.length > 0) {
-          const errorText = failedResults
-            .map((r) => `**${r.functionName}**: Error - ${r.error}`)
-            .join('\n');
-
-          enhancedResponse += `\n\n--- MCP Errors ---\n${errorText}`;
-        }
-
-        return enhancedResponse;
+        enhancedResponse += `\n\n--- MCP Errors ---\n${errorText}`;
       }
+
+      return enhancedResponse;
     } catch (error) {
-      // If MCP execution fails, return original response
-      console.error('Error executing MCP actions:', error);
+      console.error('Error enhancing response with MCP results:', error);
+      return originalResponse;
     }
-
-    return originalResponse;
   }
 
   async getChatMessages(

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { StandaloneMCPServer } from './mcp/standalone-mcp-server';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -35,13 +36,34 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.PORT || 3000;
-  await app.listen(port);
+  // Start the MCP server alongside the main app
+  const mcpServer = new StandaloneMCPServer();
+  await mcpServer.start();
 
+  // Get port from environment or default to 3000
+  const port = process.env.PORT || 3000;
+
+  await app.listen(port);
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(
     `📚 API Documentation available at: http://localhost:${port}/docs`,
   );
+  console.log(`🔧 MCP Server is running and ready for Ollama connections`);
+
+  // Graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('Shutting down gracefully...');
+    await mcpServer.stop();
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    console.log('Shutting down gracefully...');
+    await mcpServer.stop();
+    await app.close();
+    process.exit(0);
+  });
 }
 
 bootstrap();

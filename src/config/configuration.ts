@@ -24,6 +24,8 @@ export default () => ({
     model: process.env.LLM_MODEL || 'gpt-4',
     temperature: parseFloat(process.env.LLM_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.LLM_MAX_TOKENS, 10) || 4000,
+    // Enable Ollama integration (set to true to use Ollama instead of external API)
+    useOllama: process.env.LLM_USE_OLLAMA === 'true',
   },
   sandbox: {
     aci: {
