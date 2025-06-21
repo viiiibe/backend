@@ -42,7 +42,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: runner
     container_name: api
     env_file:
       - .env
@@ -66,6 +65,29 @@ services:
     #   - .:/app
     #   - /app/node_modules
     command: npm run start:dev
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+    ports:
+      - "10000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vibe-network
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
+    # command: npm run start:dev
 
 volumes:
   postgres_data:
