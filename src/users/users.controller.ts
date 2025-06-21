@@ -6,8 +6,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import axios from 'axios';
-import { ConfigService } from '@nestjs/config';
 
 class CreateUserDto {
   id: string;
@@ -26,10 +24,7 @@ class FindOrCreateUserDto {
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
   @ApiBearerAuth()
@@ -43,61 +38,22 @@ export class UsersController {
     console.log('req.headers:', JSON.stringify(req.headers, null, 2));
     console.log('=== END REQUEST OBJECT ===');
 
-    let userId = req.user.id;
-    let userEmail = req.user.email;
-    let userName = req.user.name;
-    let userPictureUrl = req.user.pictureUrl;
+    const userId = req.user.id;
+    const userEmail = req.user.email;
 
-    // If email is not available in JWT, fetch from Auth0 userinfo endpoint
-    if (!userEmail) {
-      try {
-        console.log('Email not found in JWT, fetching from Auth0 userinfo endpoint...');
-        
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-          throw new Error('No Bearer token found in request');
-        }
-
-        const accessToken = authHeader.substring(7); // Remove 'Bearer ' prefix
-        const auth0Domain = this.configService.get('auth.auth0.domain');
-        
-        const userinfoResponse = await axios.get(`https://${auth0Domain}/userinfo`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-
-        console.log('Auth0 userinfo response:', JSON.stringify(userinfoResponse.data, null, 2));
-
-        // Update user data from userinfo
-        userEmail = userinfoResponse.data.email;
-        userName = userinfoResponse.data.name || userName;
-        userPictureUrl = userinfoResponse.data.picture || userPictureUrl;
-
-        console.log('Updated user data from userinfo:', {
-          email: userEmail,
-          name: userName,
-          pictureUrl: userPictureUrl,
-        });
-      } catch (error) {
-        console.error('Error fetching userinfo from Auth0:', error);
-        throw new Error('Failed to fetch user profile from Auth0');
-      }
-    }
-
-    console.log('Final user data:', {
+    console.log('User data from Auth0:', {
       id: userId,
       email: userEmail,
-      name: userName,
-      pictureUrl: userPictureUrl,
+      name: req.user.name,
+      pictureUrl: req.user.pictureUrl,
     });
 
     // Automatically find or create user from Auth0 data
     // Only use Auth0 user data, no request parameters accepted
     return this.usersService.findOrCreateUser(userId, {
       email: userEmail,
-      name: userName,
-      pictureUrl: userPictureUrl,
+      name: req.user.name,
+      pictureUrl: req.user.pictureUrl,
     });
   }
 

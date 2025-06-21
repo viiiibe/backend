@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -23,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  validate(payload: any) {
     // Debug: Log the entire payload to see what Auth0 is providing
     console.log('Auth0 JWT Payload:', JSON.stringify(payload, null, 2));
 
@@ -36,26 +35,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // - Custom namespace claims: https://your-namespace/name, https://your-namespace/picture
 
     // Try multiple possible locations for email
-    let email = payload.email || 
-                payload['https://your-namespace/email'] ||
-                payload['https://your-domain.auth0.com/email'] ||
-                payload['https://your-domain.auth0.com/user_email'];
+    const email = payload.email || 
+                  payload['https://your-namespace/email'] ||
+                  payload['https://your-domain.auth0.com/email'] ||
+                  payload['https://your-domain.auth0.com/user_email'];
 
-    console.log('Extracted email from JWT:', email);
-
-    // If email is not in JWT, fetch it from Auth0 userinfo endpoint
-    if (!email) {
-      try {
-        console.log('Email not found in JWT, fetching from userinfo endpoint...');
-        
-        // Get the access token from the request
-        // Note: We'll need to modify this to get the actual token
-        // For now, we'll return the user without email and handle it in the controller
-        console.log('Cannot fetch userinfo without access token in JWT strategy');
-      } catch (error) {
-        console.error('Error fetching userinfo:', error);
-      }
-    }
+    console.log('Extracted email:', email);
 
     return {
       id: payload.sub,
