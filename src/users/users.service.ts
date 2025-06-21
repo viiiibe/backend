@@ -26,10 +26,14 @@ export class UsersService {
     id: string,
     data?: { email?: string; name?: string; pictureUrl?: string },
   ) {
+    if (!data?.email) {
+      throw new Error('Email is required to create a user');
+    }
+
     return this.prisma.user.create({
       data: {
         id,
-        email: data?.email,
+        email: data.email,
         name: data?.name,
         pictureUrl: data?.pictureUrl,
       },
@@ -43,6 +47,10 @@ export class UsersService {
     const existingUser = await this.findById(id);
     if (existingUser) {
       return existingUser;
+    }
+
+    if (!data?.email) {
+      throw new Error('Email is required to create a new user');
     }
 
     return this.createUser(id, data);

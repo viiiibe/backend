@@ -65,6 +65,34 @@ If using Auth0 API:
 2. **Signing Algorithm**: RS256
 3. **Token Expiration**: Configure as needed
 
+### Auth0 Rules/Actions for Email Scope
+To ensure email is always included in the profile:
+
+1. **Go to Auth0 Dashboard** → **Auth Pipeline** → **Rules** or **Actions**
+2. **Create a new Rule/Action** to ensure email is included:
+
+```javascript
+// Rule to ensure email is included in profile
+function (user, context, callback) {
+  const namespace = 'https://your-namespace/';
+  
+  // Ensure email is available
+  if (!user.email) {
+    return callback(new Error('Email is required but not available'));
+  }
+  
+  // Add email to ID token
+  context.idToken[namespace + 'email'] = user.email;
+  context.idToken.email = user.email;
+  
+  // Add email to access token
+  context.accessToken[namespace + 'email'] = user.email;
+  context.accessToken.email = user.email;
+  
+  callback(null, user, context);
+}
+```
+
 ## Environment Variables
 
 Required environment variables:
@@ -127,9 +155,35 @@ const user = await response.json();
 3. **Database Errors**: Ensure database is running and accessible
 4. **CORS Issues**: Configure CORS properly for your frontend domain
 
+### Email-Related Issues
+
+If you're getting "Email is required but not provided by Auth0" errors:
+
+1. **Check Auth0 Application Settings**:
+   - Ensure your application has the correct scopes configured
+   - Verify that email permissions are enabled
+
+2. **Check Auth0 User Profile**:
+   - Go to Auth0 Dashboard → **User Management** → **Users**
+   - Find your user and ensure they have an email address
+   - Check if email is verified
+
+3. **Check Auth0 Rules/Actions**:
+   - Ensure no rules are removing email from the profile
+   - Add a rule to explicitly include email if needed
+
+4. **Check Application Type**:
+   - For SPAs, ensure you're requesting the correct scopes
+   - For Machine-to-Machine apps, ensure the API allows email scope
+
+5. **Debug Profile Data**:
+   - Check the application logs for the "Auth0 Profile" debug output
+   - This will show exactly what data Auth0 is providing
+
 ### Debug Steps
 
 1. Check Auth0 token payload at jwt.io
 2. Verify environment variables are set correctly
 3. Check application logs for authentication errors
-4. Ensure database schema matches the User model 
+4. Ensure database schema matches the User model
+5. Look for "Auth0 Profile" debug logs to see what data is being received 

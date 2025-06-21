@@ -61,9 +61,46 @@ export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
     profile: any,
     done: any,
   ) {
+    // Debug logging for profile data
+    console.log('Auth0 Profile:', {
+      id: profile.id,
+      emails: profile.emails,
+      email: profile.email,
+      displayName: profile.displayName,
+      picture: profile.picture,
+    });
+
+    // Safely extract email from profile with multiple fallback strategies
+    let email = null;
+    
+    // Try profile.emails array first (most common)
+    if (profile.emails && Array.isArray(profile.emails) && profile.emails.length > 0) {
+      email = profile.emails[0].value;
+    }
+    // Try direct email property
+    else if (profile.email) {
+      email = profile.email;
+    }
+    // Try _json.emails (some Auth0 configurations)
+    else if (profile._json && profile._json.email) {
+      email = profile._json.email;
+    }
+    // Try _json.emails array
+    else if (profile._json && profile._json.emails && Array.isArray(profile._json.emails) && profile._json.emails.length > 0) {
+      email = profile._json.emails[0];
+    }
+
+    // Check if email is available
+    if (!email) {
+      console.error('No email found in Auth0 profile. Full profile:', JSON.stringify(profile, null, 2));
+      return done(new Error('Email is required but not provided by Auth0. Please ensure your Auth0 application is configured to include email scope.'), null);
+    }
+
+    console.log('Extracted email:', email);
+
     const user = await this.authService.validateUser(
       profile.id,
-      profile.emails[0].value,
+      email,
       profile.displayName,
       profile.picture,
     );
