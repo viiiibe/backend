@@ -17,12 +17,10 @@ export default () => ({
     },
   },
   llm: {
-    openai: {
-      apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.LLM_MODEL || 'gpt-4',
-      temperature: parseFloat(process.env.LLM_TEMPERATURE) || 0.7,
-      maxTokens: parseInt(process.env.LLM_MAX_TOKENS, 10) || 4000,
-    },
+    apiUrl: process.env.LLM_API_URL,
+    model: process.env.LLM_MODEL || 'gpt-4',
+    temperature: parseFloat(process.env.LLM_TEMPERATURE) || 0.7,
+    maxTokens: parseInt(process.env.LLM_MAX_TOKENS, 10) || 4000,
   },
   sandbox: {
     aci: {

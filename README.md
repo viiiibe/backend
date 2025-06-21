@@ -17,7 +17,7 @@ Vibe backend service.
 - **Database**: PostgreSQL with Prisma ORM
 - **Cache**: Redis
 - **Authentication**: Auth0
-- **LLM**: OpenAI GPT-4 with LangChain
+- **LLM**: OpenAI-compatible API endpoint
 - **Code Execution**: Daytona/ACI.dev integration
 - **Documentation**: Swagger/OpenAPI
 - **Containerization**: Docker & Docker Compose
@@ -56,7 +56,7 @@ AUTH0_AUDIENCE="your-api-identifier"
 AUTH0_ISSUER="https://your-domain.auth0.com/"
 
 # LLM Configuration
-OPENAI_API_KEY="your-openai-api-key"
+LLM_API_URL="https://your-openai-compatible-api.com/v1/chat/completions"
 LLM_MODEL="gpt-4"
 LLM_TEMPERATURE=0.7
 LLM_MAX_TOKENS=4000

@@ -1,31 +1,127 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
+import { LLMService } from '../llm/llm.service';
+import { MCPService } from '../mcp/mcp.service';
 import { ChatMessagesResponseDto } from '../common/dto/base.dto';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly llmService: LLMService,
+    private readonly mcpService: MCPService,
+  ) {}
 
   async handleMessage(message: string, userId: string) {
-    // Generate a response (placeholder for now)
-    const response =
-      'This is a placeholder response. Chat functionality will be implemented later.';
+    // Fetch chat history for context
+    const chatHistory = await this.getChatHistoryForContext(userId);
+    
+    // Generate response using LLM with chat history and MCPs
+    const { response, actions } = await this.llmService.generateResponse(
+      message,
+      chatHistory,
+      userId,
+    );
+
+    // Execute any MCP actions if present
+    let enhancedResponse = response;
+    if (actions && actions.length > 0) {
+      enhancedResponse = await this.executeMCPActions(actions, response, userId);
+    }
 
     // Store the message in the database
     const chatMessage = await this.prisma.chatMessage.create({
       data: {
         userId,
         message,
-        response,
+        response: enhancedResponse,
         isRead: false,
       },
     });
 
     return {
-      response,
-      actions: [],
+      response: enhancedResponse,
+      actions: actions || [],
       messageId: chatMessage.id,
     };
+  }
+
+  private async getChatHistoryForContext(userId: string): Promise<Array<{ message: string; response: string }>> {
+    // Fetch the last 10 messages for context
+    const messages = await this.prisma.chatMessage.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: {
+        message: true,
+        response: true,
+      },
+    });
+
+    // Reverse to get chronological order
+    return messages.reverse();
+  }
+
+  private async executeMCPActions(
+    actions: Array<{ functionName: string; args: any }>,
+    originalResponse: string,
+    userId: string,
+  ): Promise<string> {
+    try {
+      const results = [];
+      
+      for (const action of actions) {
+        try {
+          const result = await this.mcpService.handleMCPCall(
+            action.functionName,
+            { ...action.args, userId },
+          );
+          results.push({ functionName: action.functionName, result, success: true });
+        } catch (error) {
+          results.push({ 
+            functionName: action.functionName, 
+            error: error.message || 'Function execution failed',
+            success: false
+          });
+        }
+      }
+
+      // If we have results, enhance the response
+      if (results.length > 0) {
+        const successfulResults = results.filter(r => r.success);
+        const failedResults = results.filter(r => !r.success);
+        
+        let enhancedResponse = originalResponse;
+        
+        if (successfulResults.length > 0) {
+          const resultsText = successfulResults
+            .map(r => {
+              const resultStr = typeof r.result === 'object' 
+                ? JSON.stringify(r.result, null, 2)
+                : String(r.result);
+              return `**${r.functionName}**:\n${resultStr}`;
+            })
+            .join('\n\n');
+          
+          enhancedResponse += `\n\n--- MCP Results ---\n${resultsText}`;
+        }
+        
+        if (failedResults.length > 0) {
+          const errorText = failedResults
+            .map(r => `**${r.functionName}**: Error - ${r.error}`)
+            .join('\n');
+          
+          enhancedResponse += `\n\n--- MCP Errors ---\n${errorText}`;
+        }
+        
+        return enhancedResponse;
+      }
+    } catch (error) {
+      // If MCP execution fails, return original response
+      console.error('Error executing MCP actions:', error);
+    }
+
+    return originalResponse;
   }
 
   async getChatMessages(
