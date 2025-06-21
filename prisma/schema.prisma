@@ -57,6 +57,7 @@ model Problem {
   description       String
   complexity        ProblemComplexity
   topics            String[]         // Array of topic names
+  functionName      String?          @map("function_name")
   isCustom          Boolean          @default(false) @map("is_custom")
   createdByUserId   String?          @map("created_by_user_id")
   createdAt         DateTime         @default(now()) @map("created_at")
