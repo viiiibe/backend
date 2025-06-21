@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { MCPService } from './mcp.service';
 import { ProblemsModule } from '../problems/problems.module';
+import { UsersModule } from '../users/users.module';
+import { SubmissionsModule } from '../submissions/submissions.module';
+import { ResourcesModule } from '../resources/resources.module';
+import { SandboxModule } from '../sandbox/sandbox.module';
 
 @Module({
-  imports: [ProblemsModule],
+  imports: [ProblemsModule, UsersModule, SubmissionsModule, ResourcesModule, SandboxModule],
   providers: [MCPService],
   exports: [MCPService],
 })
