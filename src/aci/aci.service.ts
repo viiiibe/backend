@@ -14,7 +14,7 @@ export class AciService implements OnModuleInit {
    * backend controls.  In a multi-tenant setup you would likely map this to the
    * user id instead.
    */
-  public static readonly LINKED_ACCOUNT_OWNER_ID = 'platform-backend';
+  public static readonly LINKED_ACCOUNT_OWNER_ID = 'VibeUser';
 
   constructor(private readonly configService: ConfigService) {}
 

@@ -22,6 +22,12 @@ export interface ExecutionResult {
   allPassed: boolean;
 }
 
+// A mapping from our internal language name to the Daytona Image ID.
+const LANGUAGE_TO_IMAGE_ID: Record<'python' | 'cpp', string> = {
+  python: 'daytonaio/sandbox:0.3.0',
+  cpp: 'daytonaio/sandbox:0.3.0',
+};
+
 @Injectable()
 export class SandboxService {
   private readonly logger = new Logger(SandboxService.name);
@@ -29,40 +35,78 @@ export class SandboxService {
   constructor(private readonly aciService: AciService) {}
 
   /**
-   * Executes user code in an isolated Daytona workspace via the ACI platform.
+   * Executes user's Python code against a set of test cases using a single
+   * command in a Daytona workspace.
    */
   async executeCode(
     code: string,
     language: 'python' | 'cpp',
     testCases: TestCase[],
   ): Promise<ExecutionResult> {
-    // 1. Spin up a workspace
+    if (language !== 'python') {
+      throw new Error(
+        'Code execution is currently only supported for Python.',
+      );
+    }
+
     const workspaceId = await this.createWorkspace(language);
 
     try {
-      // 2. Write code & (for C++) compile
-      if (language === 'cpp') {
-        const compileErr = await this.prepareCppWorkspace(workspaceId, code);
-        if (compileErr) {
-          return { compileError: compileErr, results: [], allPassed: false };
-        }
-      } else {
-        await this.writeCodeToFile(workspaceId, 'main.py', code);
+      // Build unified command with sh -c to ensure proper pipe handling
+      const command = this.buildPythonExecutionCommand(code, testCases);
+      this.logger.log(`[DEBUG] Executing harness command: ${command}`);
+
+      // Execute the harness with generous timeout
+      const { exitCode, result } = await this.executeCommand(
+        workspaceId,
+        command,
+        120,
+      );
+
+      this.logger.log(`[DEBUG] Harness result raw: exitCode=${exitCode}, stdout/err length=${result.length}`);
+
+      if (exitCode !== 0) {
+        // This indicates the test runner script itself crashed.
+        this.logger.error(`Test harness failed with exit code ${exitCode}`);
+        return {
+          compileError: `Test harness execution failed. Error: ${result}`,
+          results: [],
+          allPassed: false,
+        };
       }
 
-      // 3. Execute against each test case
-      const results: TestCaseResult[] = [];
-      for (const tc of testCases) {
-        const result = await this.runSingleTest(workspaceId, language, tc);
-        results.push(result);
+      try {
+        const results: TestCaseResult[] = JSON.parse(result);
+        const allPassed = results.every(r=>r.passed);
+        return {compileError:null, results, allPassed};
+      } catch(e){
+        this.logger.error('JSON parse error',e);
+        return {compileError:'Malformed harness output',results:[],allPassed:false};
       }
-
-      const allPassed = results.every((r) => r.passed);
-      return { compileError: null, results, allPassed };
     } finally {
-      // 4. Always clean up the workspace
+      // CRITICAL: Always clean up the workspace
       await this.deleteWorkspace(workspaceId);
     }
+  }
+
+  /**
+   * Generates a self-contained shell command that writes the user's code and a
+   * test runner to files, executes the runner, and prints JSON results.
+   */
+  private buildPythonExecutionCommand(
+    code: string,
+    testCases: TestCase[],
+  ): string {
+    const userCodeB64 = Buffer.from(code, 'utf-8').toString('base64');
+
+    // Build a standalone python script that first execs user code then runs tests
+    const combinedScript = `\n# --- user code start ---\nimport sys, json, time, subprocess, types, io, base64\nUSER_CODE_SRC = base64.b64decode('${userCodeB64}').decode('utf-8')\n# --- harness start ---\nTEST_CASES = json.loads("""${JSON.stringify(testCases)}""")\nresults = []\nfor case in TEST_CASES:\n    start=time.time()\n    test_input = case.get('input','')\n    expected = case.get('expectedOutput','').strip()\n    stdout_capture = io.StringIO()\n    stderr_capture = io.StringIO()\n    try:\n        old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr\n        sys.stdin = io.StringIO(test_input)\n        sys.stdout = stdout_capture\n        sys.stderr = stderr_capture\n        exec(USER_CODE_SRC, {})\n        passed_output = stdout_capture.getvalue().strip()\n        passed = (passed_output == expected)\n        results.append({\n            'passed': passed,\n            'output': stdout_capture.getvalue(),\n            'expectedOutput': expected,\n            'error': stderr_capture.getvalue() or None,\n            'executionTime': int((time.time()-start)*1000)\n        })\n    except Exception as e:\n        results.append({\n            'passed': False,\n            'output': stdout_capture.getvalue(),\n            'expectedOutput': expected,\n            'error': str(e),\n            'executionTime': int((time.time()-start)*1000)\n        })\n    finally:\n        sys.stdin, sys.stdout, sys.stderr = old_stdin, old_stdout, old_stderr\nprint(json.dumps(results))`;
+
+    const combinedB64 = Buffer.from(combinedScript, 'utf-8').toString('base64');
+
+    const shellCommand = `sh -c "echo '${combinedB64}' | base64 -d | python3 -"`;
+
+    return shellCommand;
   }
 
   // ---------------------------------------------------------------------------
@@ -71,12 +115,18 @@ export class SandboxService {
 
   private async createWorkspace(language: 'python' | 'cpp'): Promise<string> {
     const name = `sub-${randomUUID()}`;
+    const imageId = LANGUAGE_TO_IMAGE_ID[language];
+    if (!imageId) {
+      throw new Error(`Unsupported language for sandbox: ${language}`);
+    }
 
     const createResp = await this.aciService.client.functions.execute({
       function_name: 'DAYTONA__CREATE_WORKSPACE',
       function_parameters: {
-        workspace_name: name,
-        language, // Daytona supports language shortcut for common images
+        body: {
+          name,
+          imageId,
+        },
       },
       linked_account_owner_id: AciService.LINKED_ACCOUNT_OWNER_ID,
     });
@@ -86,12 +136,25 @@ export class SandboxService {
       throw new Error('Workspace creation failed');
     }
 
-    const workspaceId = createResp.data?.workspace_id ?? createResp.data?.id;
+    const workspaceId = createResp.data?.id ?? createResp.data?.workspace_id;
+
+    if (!workspaceId) {
+      this.logger.error(
+        `Workspace creation succeeded but no ID was returned. Response: ${JSON.stringify(
+          createResp.data,
+        )}`,
+      );
+      throw new Error('Workspace creation failed to return an ID');
+    }
 
     // Start workspace (required before commands)
     await this.aciService.client.functions.execute({
       function_name: 'DAYTONA__START_WORKSPACE',
-      function_parameters: { workspace_id: workspaceId },
+      function_parameters: {
+        path: {
+          workspaceId: workspaceId,
+        },
+      },
       linked_account_owner_id: AciService.LINKED_ACCOUNT_OWNER_ID,
     });
 
@@ -103,7 +166,14 @@ export class SandboxService {
     try {
       await this.aciService.client.functions.execute({
         function_name: 'DAYTONA__DELETE_WORKSPACE',
-        function_parameters: { workspace_id: workspaceId },
+        function_parameters: {
+          path: {
+            workspaceId: workspaceId,
+          },
+          query: {
+            force: true, // Required by the function schema
+          },
+        },
         linked_account_owner_id: AciService.LINKED_ACCOUNT_OWNER_ID,
       });
     } catch (err) {
@@ -111,89 +181,45 @@ export class SandboxService {
     }
   }
 
-  private async writeCodeToFile(
-    workspaceId: string,
-    filename: string,
-    contents: string,
-  ) {
-    const b64 = Buffer.from(contents, 'utf-8').toString('base64');
-    const cmd = `echo '${b64}' | base64 -d > ${filename}`;
-    await this.executeCommand(workspaceId, cmd);
-  }
-
-  private async prepareCppWorkspace(
-    workspaceId: string,
-    code: string,
-  ): Promise<string | null> {
-    await this.writeCodeToFile(workspaceId, 'main.cpp', code);
-
-    const compile = await this.executeCommand(
-      workspaceId,
-      'g++ main.cpp -std=c++17 -O2 -pipe -static -s -o main',
-      30,
-    );
-
-    if (compile.exitCode !== 0) {
-      return compile.result as string;
-    }
-    return null;
-  }
-
-  private async runSingleTest(
-    workspaceId: string,
-    language: 'python' | 'cpp',
-    testCase: TestCase,
-  ): Promise<TestCaseResult> {
-    const start = Date.now();
-    const inputB64 = Buffer.from(testCase.input, 'utf-8').toString('base64');
-
-    const runCmd =
-      language === 'cpp'
-        ? `echo '${inputB64}' | base64 -d | ./main`
-        : `echo '${inputB64}' | base64 -d | python3 main.py`;
-
-    const exec = await this.executeCommand(workspaceId, runCmd, 10);
-    const executionTime = Date.now() - start;
-
-    const stdout: string = (exec.result as string) ?? '';
-    const trimmedOut = stdout.trim();
-    const trimmedExpected = testCase.expectedOutput.trim();
-
-    return {
-      passed: trimmedOut === trimmedExpected && exec.exitCode === 0,
-      output: stdout,
-      expectedOutput: testCase.expectedOutput,
-      error: exec.exitCode === 0 ? null : stdout,
-      executionTime,
-    };
-  }
-
   private async executeCommand(
     workspaceId: string,
     command: string,
     timeoutSeconds = 10,
   ): Promise<{ exitCode: number; result: any }> {
+    this.logger.log(`Executing command in workspace ${workspaceId}: ${command}`);
+
     const res: FunctionExecutionResult =
       await this.aciService.client.functions.execute({
         function_name: 'DAYTONA__EXECUTE_COMMAND',
         function_parameters: {
-          workspace_id: workspaceId,
-          command,
-          timeout_seconds: timeoutSeconds,
+          path: {
+            workspaceId: workspaceId,
+          },
+          body: {
+            command,
+            timeout: timeoutSeconds,
+          },
         },
         linked_account_owner_id: AciService.LINKED_ACCOUNT_OWNER_ID,
       });
+
+    this.logger.log(`ACI response: ${JSON.stringify(res, null, 2)}`);
 
     if (!res.success) {
       throw new Error(`Command failed: ${res.error}`);
     }
 
-    // The exact data shape depends on Daytona.  We defensively pick fields.
-    const exitCode = (res.data?.exit_code ?? res.data?.exitCode ?? 0) as number;
+    // The exact data shape depends on Daytona. We defensively pick fields.
+    const exitCode = (res.data?.exit_code ?? res.data?.exitCode ?? -1) as number;
+    const stdout = res.data?.stdout ?? res.data?.result ?? '';
+    const stderr = res.data?.stderr ?? '';
+
+    // If the command failed, stderr is the most likely place for the error message.
+    const result = exitCode === 0 ? stdout : stderr || stdout;
 
     return {
       exitCode,
-      result: res.data?.stdout ?? res.data?.result ?? '',
+      result,
     };
   }
 }
