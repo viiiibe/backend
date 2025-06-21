@@ -4,11 +4,13 @@ import { AciService } from '../aci/aci.service';
 import { FunctionExecutionResult } from '@aci-sdk/aci';
 
 interface TestCase {
+  id?: number;
   input: string;
-  expectedOutput: string;
+  expectedOutput?: string;
 }
 
 export interface TestCaseResult {
+  id?: number;
   passed: boolean;
   output: string;
   expectedOutput: string;
@@ -97,12 +99,102 @@ export class SandboxService {
     code: string,
     testCases: TestCase[],
   ): string {
+    let finalTestCases: TestCase[] = testCases ?? [];
+    if (finalTestCases.length === 0) {
+      this.logger.warn(
+        'No test cases supplied for problem – inserting dummy assert True.',
+      );
+      finalTestCases = [{ input: 'assert True' }];
+    }
+
+    // ---------------------------------------------------------------------
+    // 2. Build the harness script
+    // ---------------------------------------------------------------------
     const userCodeB64 = Buffer.from(code, 'utf-8').toString('base64');
 
-    // Build a standalone python script that first execs user code then runs tests
-    const combinedScript = `\n# --- user code start ---\nimport sys, json, time, subprocess, types, io, base64\nUSER_CODE_SRC = base64.b64decode('${userCodeB64}').decode('utf-8')\n# --- harness start ---\nTEST_CASES = json.loads("""${JSON.stringify(testCases)}""")\nresults = []\nfor case in TEST_CASES:\n    start=time.time()\n    test_input = case.get('input','')\n    expected = case.get('expectedOutput','').strip()\n    stdout_capture = io.StringIO()\n    stderr_capture = io.StringIO()\n    try:\n        old_stdin, old_stdout, old_stderr = sys.stdin, sys.stdout, sys.stderr\n        sys.stdin = io.StringIO(test_input)\n        sys.stdout = stdout_capture\n        sys.stderr = stderr_capture\n        exec(USER_CODE_SRC, {})\n        passed_output = stdout_capture.getvalue().strip()\n        passed = (passed_output == expected)\n        results.append({\n            'passed': passed,\n            'output': stdout_capture.getvalue(),\n            'expectedOutput': expected,\n            'error': stderr_capture.getvalue() or None,\n            'executionTime': int((time.time()-start)*1000)\n        })\n    except Exception as e:\n        results.append({\n            'passed': False,\n            'output': stdout_capture.getvalue(),\n            'expectedOutput': expected,\n            'error': str(e),\n            'executionTime': int((time.time()-start)*1000)\n        })\n    finally:\n        sys.stdin, sys.stdout, sys.stderr = old_stdin, old_stdout, old_stderr\nprint(json.dumps(results))`;
+    /*
+      Harness strategy:
+        – Decode user code and attempt to exec once in `user_globals`.
+          Any exception here is treated as a compile/runtime error and causes
+          immediate exit (non-zero) with the traceback printed to stderr.
+        – Iterate over TEST_CASES.  Each case may be one of two styles:
+            a) assertion-style:   input starts with the keyword "assert"
+            b) stdin/stdout style: expectedOutput is provided
+          For (a) we simply exec the assertion in the same globals and mark
+          pass/fail depending on raised AssertionError / other Exception.
+          For (b) we replicate the previous behaviour of piping stdin and
+          comparing captured stdout to expectedOutput.
+        – Results are appended to a list and finally JSON-dumped to stdout so
+          the outer service can parse it.
+    */
 
-    const combinedB64 = Buffer.from(combinedScript, 'utf-8').toString('base64');
+    const harnessScript = `
+import sys, json, time, traceback, io, base64, contextlib
+
+# ---------------- USER CODE ----------------
+USER_CODE_SRC = base64.b64decode('${userCodeB64}').decode('utf-8')
+user_globals = {}
+try:
+    # Suppress any prints during initial import/definition phase
+    with contextlib.redirect_stdout(io.StringIO()):
+        exec(USER_CODE_SRC, user_globals)
+except Exception:
+    # Early failure – treat as compile/runtime error before tests start.
+    sys.stderr.write(traceback.format_exc())
+    sys.exit(1)
+
+# ---------------- TEST HARNESS ------------
+TEST_CASES = json.loads("""${JSON.stringify(finalTestCases)}""")
+
+results = []
+if not TEST_CASES:
+    TEST_CASES = [{"input": "assert True", "expectedOutput": ""}]
+
+for case in TEST_CASES:
+    start_time = time.time()
+    inp = case.get('input', '')
+    expected = case.get('expectedOutput', None)
+    res = {
+        'id': case.get('id'),
+        'passed': False,
+        'output': '',
+        'expectedOutput': expected,
+        'error': None,
+        'executionTime': 0,
+    }
+
+    try:
+        if inp.strip().startswith('assert'):
+            # Style (a): assertion provided directly
+            with contextlib.redirect_stdout(io.StringIO()):
+                exec(inp, user_globals)
+            res['passed'] = True
+        else:
+            # Style (b): stdin/stdout comparison
+            stdout_buf = io.StringIO()
+            old_stdout, old_stdin = sys.stdout, sys.stdin
+            sys.stdout = stdout_buf
+            sys.stdin = io.StringIO(inp)
+            try:
+                # Re-exec user code so main-guard style solutions run each time
+                exec(USER_CODE_SRC, user_globals)
+            finally:
+                sys.stdout = old_stdout
+                sys.stdin = old_stdin
+
+            res['output'] = stdout_buf.getvalue().strip()
+            res['passed'] = (expected is None) or (res['output'] == str(expected).strip())
+    except AssertionError as ae:
+        res['error'] = 'AssertionError: ' + str(ae)
+    except Exception:
+        res['error'] = traceback.format_exc()
+    finally:
+        res['executionTime'] = int((time.time() - start_time) * 1000)
+        results.append(res)
+
+print(json.dumps(results))`;
+
+    const combinedB64 = Buffer.from(harnessScript, 'utf-8').toString('base64');
 
     const shellCommand = `sh -c "echo '${combinedB64}' | base64 -d | python3 -"`;
 

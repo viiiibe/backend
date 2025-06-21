@@ -30,7 +30,6 @@ async function bootstrap() {
     .setDescription('Vibe Backend API')
     .setVersion('1.0')
     .addBearerAuth()
-    .addServer('/api', 'API Server')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

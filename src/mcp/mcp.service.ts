@@ -4,7 +4,7 @@ import { UsersService } from '../users/users.service';
 import { SubmissionsService } from '../submissions/submissions.service';
 import { ResourcesService } from '../resources/resources.service';
 import { SandboxService } from '../sandbox/sandbox.service';
-import { ProblemComplexity } from '@prisma/client';
+import { ProblemComplexity, SubmissionStatus } from '@prisma/client';
 
 @Injectable()
 export class MCPService {
@@ -81,9 +81,11 @@ export class MCPService {
   }
 
   private async executeCode(args: any) {
-    const { code, language, problemId } = args ?? {};
-    if (!code || !language || !problemId) {
-      throw new BadRequestException('code, language and problemId required');
+    const { code, language, problemId, userId } = args ?? {};
+    if (!code || !language || !problemId || !userId) {
+      throw new BadRequestException(
+        'code, language, problemId, and userId are required',
+      );
     }
     // fetch problem test cases
     const problem = await this.problemsService.findById(problemId);
@@ -93,6 +95,32 @@ export class MCPService {
       language,
       problem.testCases,
     );
+
+    // Persist submission
+    let status: SubmissionStatus;
+    let failedTestCaseId: number | null = null;
+
+    if (execResult.compileError) {
+      status = SubmissionStatus.ERROR;
+    } else if (execResult.allPassed) {
+      status = SubmissionStatus.PASSED;
+    } else {
+      status = SubmissionStatus.FAILED;
+      const failedTest = execResult.results.find((r) => !r.passed);
+      if (failedTest && failedTest.id) {
+        failedTestCaseId = failedTest.id;
+      }
+    }
+
+    await this.submissionsService.create({
+      userId,
+      problemId,
+      code,
+      language,
+      status,
+      failedTestCaseId,
+    });
+
     return execResult;
   }
 }

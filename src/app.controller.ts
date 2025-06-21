@@ -94,11 +94,32 @@ export class AppController {
       'Test MCP execute_code (curl example omitted, should be POST in real implementation)',
   })
   async testExecuteCodeDemo() {
-    // simple demo runs placeholder execution
+    // Python implementation of fast exponentiation (binary power)
+    const myPowImpl = `
+def my_pow(x: float, n: int) -> float:
+    """Compute x raised to the power n using fast exponentiation."""
+    if n == 0:
+        return 1.0
+
+    # Handle negative exponent
+    if n < 0:
+        x, n = 1 / x, -n
+
+    result = 1.0
+    base = x
+    while n:
+        if n & 1:
+            result *= base
+        base *= base
+        n >>= 1
+    return round(result, 5)
+`;
+
     const result = await this.mcpService.handleMCPCall('execute_code', {
-      code: 'print(1)',
+      code: myPowImpl,
       language: 'python',
       problemId: '42f5d1bb-32fb-4e12-a436-2afd68d24044',
+      userId: 'auth0|user123',
     });
     return result;
   }
