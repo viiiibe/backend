@@ -22,6 +22,25 @@ export class UsersService {
     });
   }
 
+  async createUser(id: string, data?: { email?: string; name?: string }) {
+    return this.prisma.user.create({
+      data: {
+        id,
+        email: data?.email,
+        name: data?.name,
+      },
+    });
+  }
+
+  async findOrCreateUser(id: string, data?: { email?: string; name?: string }) {
+    const existingUser = await this.findById(id);
+    if (existingUser) {
+      return existingUser;
+    }
+
+    return this.createUser(id, data);
+  }
+
   async getUserStats(userId: string) {
     const [totalSubmissions, passedSubmissions, solvedProblems] = await Promise.all([
       this.prisma.submission.count({
