@@ -14,6 +14,7 @@ import { LLMModule } from './llm/llm.module';
 import { SandboxModule } from './sandbox/sandbox.module';
 import { MCPModule } from './mcp/mcp.module';
 import { ResourcesModule } from './resources/resources.module';
+import { AciModule } from './aci/aci.module';
 
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
@@ -39,6 +40,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     SandboxModule,
     MCPModule,
     ResourcesModule,
+    AciModule,
   ],
   controllers: [AppController],
   providers: [
