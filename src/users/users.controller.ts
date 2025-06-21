@@ -31,10 +31,25 @@ export class UsersController {
   @ApiOperation({ summary: 'Get my profile' })
   @ApiResponse({ status: 200, description: 'User profile retrieved' })
   async getMyProfile(@Req() req: any) {
+    // Log the entire request object to see what Auth0 provides
+    console.log('=== ENTIRE REQUEST OBJECT ===');
+    console.log('req:', JSON.stringify(req, null, 2));
+    console.log('req.user:', JSON.stringify(req.user, null, 2));
+    console.log('req.headers:', JSON.stringify(req.headers, null, 2));
+    console.log('=== END REQUEST OBJECT ===');
+
     const userId = req.user.id;
     const userEmail = req.user.email;
 
+    console.log('User data from Auth0:', {
+      id: userId,
+      email: userEmail,
+      name: req.user.name,
+      pictureUrl: req.user.pictureUrl,
+    });
+
     // Automatically find or create user from Auth0 data
+    // Only use Auth0 user data, no request parameters accepted
     return this.usersService.findOrCreateUser(userId, {
       email: userEmail,
       name: req.user.name,

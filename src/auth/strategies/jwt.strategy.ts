@@ -23,17 +23,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: any) {
+    // Debug: Log the entire payload to see what Auth0 is providing
+    console.log('Auth0 JWT Payload:', JSON.stringify(payload, null, 2));
+
     // Auth0 JWT payload structure:
     // - sub: user ID (e.g., "auth0|123456789")
-    // - email: user email
+    // - email: user email (might be in different locations)
     // - name: user name (standard claim)
     // - nickname: alternative name field
     // - picture: profile picture URL
     // - Custom namespace claims: https://your-namespace/name, https://your-namespace/picture
 
+    // Try multiple possible locations for email
+    const email = payload.email || 
+                  payload['https://your-namespace/email'] ||
+                  payload['https://your-domain.auth0.com/email'] ||
+                  payload['https://your-domain.auth0.com/user_email'];
+
+    console.log('Extracted email:', email);
+
     return {
       id: payload.sub,
-      email: payload.email,
+      email: email,
       name:
         payload.name ||
         payload.nickname ||
