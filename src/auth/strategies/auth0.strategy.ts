@@ -71,7 +71,9 @@ export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
     });
 
     // Generate a random email instead of using Auth0 email
-    const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const randomId =
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15);
     const email = `user_${randomId}@example.com`;
 
     console.log('Generated random email:', email);

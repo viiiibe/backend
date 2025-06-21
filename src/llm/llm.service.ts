@@ -28,13 +28,15 @@ export class LLMService {
     this.maxTokens = this.configService.get<number>('llm.maxTokens');
 
     if (!this.apiUrl) {
-      this.logger.warn('LLM API URL not found. LLM functionality will be limited.');
+      this.logger.warn(
+        'LLM API URL not found. LLM functionality will be limited.',
+      );
     }
   }
 
   private buildApiUrl(): string {
     const baseUrl = this.configService.get<string>('llm.apiUrl');
-    
+
     if (!baseUrl) {
       this.logger.warn('LLM_API_URL environment variable is not set');
       return '';
@@ -74,17 +76,18 @@ export class LLMService {
     try {
       if (!this.apiUrl) {
         return {
-          response: 'LLM service is not configured. Please set LLM_API_URL environment variable.',
+          response:
+            'LLM service is not configured. Please set LLM_API_URL environment variable.',
           actions: [],
         };
       }
 
       // Get available MCP functions
       const availableFunctions = this.mcpService.getAvailableFunctions();
-      
+
       // Build system prompt with MCP context
       const systemPrompt = this.buildSystemPrompt(availableFunctions);
-      
+
       // Prepare the request payload
       const payload = {
         model: this.model,
@@ -110,9 +113,13 @@ export class LLMService {
       this.logger.debug(`Temperature: ${this.temperature}`);
       this.logger.debug(`Max Tokens: ${this.maxTokens}`);
       this.logger.debug(`User ID: ${userId}`);
-      this.logger.debug(`Available MCP Functions: ${JSON.stringify(availableFunctions, null, 2)}`);
+      this.logger.debug(
+        `Available MCP Functions: ${JSON.stringify(availableFunctions, null, 2)}`,
+      );
       this.logger.debug(`System Prompt: ${systemPrompt}`);
-      this.logger.debug(`Chat History: ${JSON.stringify(chatHistory, null, 2)}`);
+      this.logger.debug(
+        `Chat History: ${JSON.stringify(chatHistory, null, 2)}`,
+      );
       this.logger.debug(`User Message: ${message}`);
       this.logger.debug(`Full Payload: ${JSON.stringify(payload, null, 2)}`);
       this.logger.debug('=== END LLM REQUEST DEBUG ===');
@@ -133,23 +140,25 @@ export class LLMService {
       this.logger.debug('=== END LLM RESPONSE DEBUG ===');
 
       if (!response.ok) {
-        throw new Error(`LLM API request failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `LLM API request failed: ${response.status} ${response.statusText}`,
+        );
       }
 
       const data: LLMResponse = await response.json();
-      const llmResponse = data.choices[0]?.message?.content || 'No response generated';
-      
-      
+      const llmResponse =
+        data.choices[0]?.message?.content || 'No response generated';
+
       // Extract any MCP function calls from the response
       const actions = this.extractMCPActions(llmResponse);
-      
+
       // Debug logging for extracted actions
       if (actions.length > 0) {
         this.logger.debug('=== EXTRACTED MCP ACTIONS ===');
         this.logger.debug(`Actions: ${JSON.stringify(actions, null, 2)}`);
         this.logger.debug('=== END EXTRACTED MCP ACTIONS ===');
       }
-      
+
       return {
         response: llmResponse,
         actions,
@@ -157,15 +166,18 @@ export class LLMService {
     } catch (error) {
       this.logger.error('Error generating LLM response:', error);
       return {
-        response: 'I apologize, but I encountered an error while processing your message. Please try again.',
+        response:
+          'I apologize, but I encountered an error while processing your message. Please try again.',
         actions: [],
       };
     }
   }
 
-  private convertHistoryToMessages(chatHistory: Array<{ message: string; response: string }>) {
+  private convertHistoryToMessages(
+    chatHistory: Array<{ message: string; response: string }>,
+  ) {
     const messages = [];
-    
+
     for (const entry of chatHistory) {
       messages.push({
         role: 'user' as const,
@@ -176,7 +188,7 @@ export class LLMService {
         content: entry.response,
       });
     }
-    
+
     return messages;
   }
 
@@ -184,7 +196,7 @@ export class LLMService {
     return `You are an AI assistant for a coding education platform. You help users learn programming by providing guidance, explanations, and suggestions.
 
 Available MCP (Model Context Protocol) functions you can use:
-${availableFunctions.map(func => `- ${func}`).join('\n')}
+${availableFunctions.map((func) => `- ${func}`).join('\n')}
 
 When a user asks for help with coding problems, learning resources, or wants to practice, you can use these functions to provide more personalized assistance.
 
@@ -211,7 +223,7 @@ Example MCP function calls:
   private extractMCPActions(response: string): any[] {
     const actions: any[] = [];
     const mcpCallRegex = /\[MCP_CALL:([^:]+):(\{[^}]+\})\]/g;
-    
+
     let match;
     while ((match = mcpCallRegex.exec(response)) !== null) {
       try {
@@ -222,7 +234,7 @@ Example MCP function calls:
         this.logger.warn('Failed to parse MCP action:', error);
       }
     }
-    
+
     return actions;
   }
 

@@ -29,4 +29,22 @@ export class ProblemsController {
     // User must be authenticated to access problems
     return this.problemsService.findById(id);
   }
+
+  @Get('topics/all')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all unique topics' })
+  @ApiResponse({
+    status: 200,
+    description: 'Unique topics retrieved',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+  })
+  async getAllTopics(@Req() req: any) {
+    // User must be authenticated to access topics
+    return this.problemsService.findAllUniqueTopics();
+  }
 }

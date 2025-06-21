@@ -83,4 +83,18 @@ export class ProblemsService {
       },
     });
   }
+
+  /**
+   * Returns all unique topics from the problems table.
+   */
+  async findAllUniqueTopics() {
+    const result = await this.prisma.$queryRaw<Array<{ unique_topic: string }>>`
+      SELECT DISTINCT unnest(topics) AS unique_topic
+      FROM problems
+      WHERE topics IS NOT NULL
+      ORDER BY unique_topic;
+    `;
+
+    return result.map((row) => row.unique_topic);
+  }
 }

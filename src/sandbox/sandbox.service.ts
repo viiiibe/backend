@@ -46,9 +46,7 @@ export class SandboxService {
     testCases: TestCase[],
   ): Promise<ExecutionResult> {
     if (language !== 'python') {
-      throw new Error(
-        'Code execution is currently only supported for Python.',
-      );
+      throw new Error('Code execution is currently only supported for Python.');
     }
 
     const workspaceId = await this.createWorkspace(language);
@@ -65,7 +63,9 @@ export class SandboxService {
         120,
       );
 
-      this.logger.log(`[DEBUG] Harness result raw: exitCode=${exitCode}, stdout/err length=${result.length}`);
+      this.logger.log(
+        `[DEBUG] Harness result raw: exitCode=${exitCode}, stdout/err length=${result.length}`,
+      );
 
       if (exitCode !== 0) {
         // This indicates the test runner script itself crashed.
@@ -79,11 +79,15 @@ export class SandboxService {
 
       try {
         const results: TestCaseResult[] = JSON.parse(result);
-        const allPassed = results.every(r=>r.passed);
-        return {compileError:null, results, allPassed};
-      } catch(e){
-        this.logger.error('JSON parse error',e);
-        return {compileError:'Malformed harness output',results:[],allPassed:false};
+        const allPassed = results.every((r) => r.passed);
+        return { compileError: null, results, allPassed };
+      } catch (e) {
+        this.logger.error('JSON parse error', e);
+        return {
+          compileError: 'Malformed harness output',
+          results: [],
+          allPassed: false,
+        };
       }
     } finally {
       // CRITICAL: Always clean up the workspace
@@ -278,7 +282,9 @@ print(json.dumps(results))`;
     command: string,
     timeoutSeconds = 10,
   ): Promise<{ exitCode: number; result: any }> {
-    this.logger.log(`Executing command in workspace ${workspaceId}: ${command}`);
+    this.logger.log(
+      `Executing command in workspace ${workspaceId}: ${command}`,
+    );
 
     const res: FunctionExecutionResult =
       await this.aciService.client.functions.execute({
@@ -302,7 +308,9 @@ print(json.dumps(results))`;
     }
 
     // The exact data shape depends on Daytona. We defensively pick fields.
-    const exitCode = (res.data?.exit_code ?? res.data?.exitCode ?? -1) as number;
+    const exitCode = (res.data?.exit_code ??
+      res.data?.exitCode ??
+      -1) as number;
     const stdout = res.data?.stdout ?? res.data?.result ?? '';
     const stderr = res.data?.stderr ?? '';
 

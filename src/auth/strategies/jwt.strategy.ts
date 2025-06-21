@@ -35,10 +35,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // - Custom namespace claims: https://your-namespace/name, https://your-namespace/picture
 
     // Try multiple possible locations for email
-    const email = payload.email || 
-                  payload['https://your-namespace/email'] ||
-                  payload['https://your-domain.auth0.com/email'] ||
-                  payload['https://your-domain.auth0.com/user_email'];
+    const email =
+      payload.email ||
+      payload['https://your-namespace/email'] ||
+      payload['https://your-domain.auth0.com/email'] ||
+      payload['https://your-domain.auth0.com/user_email'];
 
     console.log('Extracted email:', email);
 

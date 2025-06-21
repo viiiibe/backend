@@ -28,6 +28,8 @@ export class MCPService {
         return this.checkSolutionHistory(args);
       case 'execute_code':
         return this.executeCode(args);
+      case 'get_all_topics':
+        return this.getAllTopics(args);
       default:
         throw new BadRequestException(
           `Unsupported MCP function: ${functionName}`,
@@ -42,6 +44,7 @@ export class MCPService {
       'fetch_learning_resources',
       'check_solution_history',
       'execute_code',
+      'get_all_topics',
     ];
   }
 
@@ -122,5 +125,10 @@ export class MCPService {
     });
 
     return execResult;
+  }
+
+  private async getAllTopics(_args: any) {
+    // No arguments required for this function
+    return this.problemsService.findAllUniqueTopics();
   }
 }

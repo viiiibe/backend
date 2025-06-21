@@ -17,7 +17,7 @@ export class ChatService {
     const chatHistory = await this.getChatHistoryForContext(userId);
 
     console.log('chatHistory', chatHistory);
-    
+
     // Generate response using LLM with chat history and MCPs
     const { response, actions } = await this.llmService.generateResponse(
       message,
@@ -31,7 +31,11 @@ export class ChatService {
     // Execute any MCP actions if present
     let enhancedResponse = response;
     if (actions && actions.length > 0) {
-      enhancedResponse = await this.executeMCPActions(actions, response, userId);
+      enhancedResponse = await this.executeMCPActions(
+        actions,
+        response,
+        userId,
+      );
     }
 
     // Store the message in the database
@@ -51,7 +55,9 @@ export class ChatService {
     };
   }
 
-  private async getChatHistoryForContext(userId: string): Promise<Array<{ message: string; response: string }>> {
+  private async getChatHistoryForContext(
+    userId: string,
+  ): Promise<Array<{ message: string; response: string }>> {
     // Fetch the last 10 messages for context
     const messages = await this.prisma.chatMessage.findMany({
       where: { userId },
@@ -74,51 +80,56 @@ export class ChatService {
   ): Promise<string> {
     try {
       const results = [];
-      
+
       for (const action of actions) {
         try {
           const result = await this.mcpService.handleMCPCall(
             action.functionName,
             { ...action.args, userId },
           );
-          results.push({ functionName: action.functionName, result, success: true });
+          results.push({
+            functionName: action.functionName,
+            result,
+            success: true,
+          });
         } catch (error) {
-          results.push({ 
-            functionName: action.functionName, 
+          results.push({
+            functionName: action.functionName,
             error: error.message || 'Function execution failed',
-            success: false
+            success: false,
           });
         }
       }
 
       // If we have results, enhance the response
       if (results.length > 0) {
-        const successfulResults = results.filter(r => r.success);
-        const failedResults = results.filter(r => !r.success);
-        
+        const successfulResults = results.filter((r) => r.success);
+        const failedResults = results.filter((r) => !r.success);
+
         let enhancedResponse = originalResponse;
-        
+
         if (successfulResults.length > 0) {
           const resultsText = successfulResults
-            .map(r => {
-              const resultStr = typeof r.result === 'object' 
-                ? JSON.stringify(r.result, null, 2)
-                : String(r.result);
+            .map((r) => {
+              const resultStr =
+                typeof r.result === 'object'
+                  ? JSON.stringify(r.result, null, 2)
+                  : String(r.result);
               return `**${r.functionName}**:\n${resultStr}`;
             })
             .join('\n\n');
-          
+
           enhancedResponse += `\n\n--- MCP Results ---\n${resultsText}`;
         }
-        
+
         if (failedResults.length > 0) {
           const errorText = failedResults
-            .map(r => `**${r.functionName}**: Error - ${r.error}`)
+            .map((r) => `**${r.functionName}**: Error - ${r.error}`)
             .join('\n');
-          
+
           enhancedResponse += `\n\n--- MCP Errors ---\n${errorText}`;
         }
-        
+
         return enhancedResponse;
       }
     } catch (error) {
