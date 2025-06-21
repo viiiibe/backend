@@ -47,10 +47,12 @@ services:
     env_file:
       - .env
     environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibe?schema=public
-      REDIS_URL: redis://redis:6379
-      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-development}
+      # DATABASE_URL is taken from .env; fallback to local postgres container
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/vibe?schema=public}
+      # Allow overriding Redis too, default to internal service
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      PORT: ${PORT:-3000}
     ports:
       - "1337:3000"
     depends_on:

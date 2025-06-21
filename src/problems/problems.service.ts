@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
+import { ProblemComplexity } from '@prisma/client';
 
 @Injectable()
 export class ProblemsService {
@@ -48,6 +49,34 @@ export class ProblemsService {
     }
 
     return this.prisma.problem.findMany({
+      where,
+      include: {
+        testCases: true,
+      },
+    });
+  }
+
+  /**
+   * Returns a single problem that matches the given topic and complexity,
+   * excluding any IDs supplied in the excludeIds array.
+   */
+  async findOneByTopicAndDifficulty(
+    topic: string,
+    complexity: ProblemComplexity,
+    excludeIds?: string[],
+  ) {
+    const where: any = {
+      complexity,
+      topics: {
+        has: topic,
+      },
+    };
+
+    if (excludeIds?.length) {
+      where.id = { notIn: excludeIds };
+    }
+
+    return this.prisma.problem.findFirst({
       where,
       include: {
         testCases: true,

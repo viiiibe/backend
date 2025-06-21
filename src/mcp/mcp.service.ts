@@ -1,22 +1,35 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { ProblemsService } from '../problems/problems.service';
+import { ProblemComplexity } from '@prisma/client';
 
 @Injectable()
 export class MCPService {
-  // Placeholder methods - will be implemented later
+  constructor(private readonly problemsService: ProblemsService) {}
+
   async handleMCPCall(functionName: string, args: any) {
-    return {
-      result: 'Placeholder MCP result',
-      error: null,
-    };
+    switch (functionName) {
+      case 'get_problem_by_topic':
+        return this.getProblemByTopic(args);
+      default:
+        throw new BadRequestException(`Unsupported MCP function: ${functionName}`);
+    }
   }
 
   getAvailableFunctions() {
-    return [
-      'fetch_user_history',
-      'execute_code',
-      'get_problem_by_topic',
-      'fetch_learning_resources',
-      'check_solution_history',
-    ];
+    return ['get_problem_by_topic'];
+  }
+
+  private async getProblemByTopic(args: any) {
+    const { topic, complexity, excludeIds } = args ?? {};
+    if (!topic || !complexity) {
+      throw new BadRequestException('topic and complexity are required');
+    }
+    const comp = (complexity as string).toUpperCase() as ProblemComplexity;
+    const problem = await this.problemsService.findOneByTopicAndDifficulty(
+      topic,
+      comp,
+      excludeIds,
+    );
+    return problem;
   }
 } 
