@@ -1,10 +1,8 @@
 import {
   Server,
   StdioServerTransport,
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
   Tool,
-} from '@modelcontextprotocol/sdk/server/index.js';
+} from '@modelcontextprotocol/sdk/dist/cjs/server';
 import { PrismaClient } from '@prisma/client';
 import { ProblemsService } from '../problems/problems.service';
 import { UsersService } from '../users/users.service';
@@ -57,13 +55,13 @@ class StandaloneMCPServer {
     const availableFunctions = this.getAvailableFunctions();
     const tools = availableFunctions.map(funcName => this.createToolFromFunction(funcName));
 
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this.server.setRequestHandler('tools/list', async () => {
       return {
         tools: tools,
       };
     });
 
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler('tools/call', async (request) => {
       const { name, arguments: args } = request.params;
       
       try {

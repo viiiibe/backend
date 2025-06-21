@@ -1,9 +1,7 @@
 import {
   Client,
   StdioClientTransport,
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/client/index.js';
+} from '@modelcontextprotocol/sdk/dist/cjs/client';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
@@ -26,7 +24,7 @@ export class MCPClient {
 
   async listTools() {
     try {
-      const response = await this.client.request(ListToolsRequestSchema, {});
+      const response = await this.client.listTools();
       return response.tools;
     } catch (error) {
       this.logger.error('Error listing tools:', error);
@@ -36,7 +34,7 @@ export class MCPClient {
 
   async callTool(name: string, arguments_: any) {
     try {
-      const response = await this.client.request(CallToolRequestSchema, {
+      const response = await this.client.callTool({
         name,
         arguments: arguments_,
       });

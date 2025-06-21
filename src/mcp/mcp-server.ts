@@ -1,10 +1,8 @@
 import {
   Server,
   StdioServerTransport,
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
   Tool,
-} from '@modelcontextprotocol/sdk/server/index.js';
+} from '@modelcontextprotocol/sdk/dist/cjs/server';
 import { Injectable, Logger } from '@nestjs/common';
 import { MCPService } from './mcp.service';
 
@@ -43,14 +41,14 @@ export class MCPServer {
     const tools = availableFunctions.map(funcName => this.createToolFromFunction(funcName));
 
     // Register list tools handler
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this.server.setRequestHandler('tools/list', async () => {
       return {
         tools: tools,
       };
     });
 
     // Register call tool handler
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler('tools/call', async (request) => {
       const { name, arguments: args } = request.params;
       
       try {
