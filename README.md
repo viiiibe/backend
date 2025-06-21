@@ -106,11 +106,10 @@ Once the server is running, visit:
 The application uses the following main entities:
 
 - **Users**: User profiles and authentication
-- **Topics**: Coding topics (Arrays, Graphs, DP, etc.)
-- **Problems**: Coding problems with test cases
+- **Problems**: Coding problems with test cases and topic arrays
 - **Submissions**: User code submissions and results
-- **Learning Resources**: Books, courses, articles
-- **Topic Dependencies**: Learning path prerequisites
+- **Learning Resources**: Books, courses, articles with topic arrays
+- **Solved Problems**: User progress tracking
 
 ## Development
 
@@ -179,7 +178,7 @@ src/
 - `GET /api/users/:id/stats` - Get user statistics
 
 ### Resources
-- `GET /api/resources/topic/:topicId` - Get resources by topic
+- `GET /api/resources/topic/:topic` - Get resources by topic
 
 ## Contributing
 

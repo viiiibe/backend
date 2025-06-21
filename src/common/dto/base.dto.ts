@@ -59,9 +59,10 @@ export class CreateProblemDto {
   @IsEnum(ProblemComplexity)
   complexity: ProblemComplexity;
 
-  @ApiProperty()
-  @IsString()
-  topic: string;
+  @ApiProperty({ type: [String], description: 'Array of topic names' })
+  @IsArray()
+  @IsString({ each: true })
+  topics: string[];
 
   @ApiProperty({ type: [TestCaseDto] })
   @IsArray()

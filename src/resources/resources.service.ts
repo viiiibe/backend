@@ -5,16 +5,27 @@ import { PrismaService } from '../db/prisma.service';
 export class ResourcesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Placeholder methods - will be implemented later
-  async findByTopic(topicId: number) {
+  async findByTopic(topic: string) {
     return this.prisma.learningResource.findMany({
       where: {
-        topicResources: {
-          some: {
-            topicId,
-          },
+        topics: {
+          has: topic,
         },
       },
     });
+  }
+
+  async findByTopics(topics: string[]) {
+    return this.prisma.learningResource.findMany({
+      where: {
+        topics: {
+          hasSome: topics,
+        },
+      },
+    });
+  }
+
+  async findAll() {
+    return this.prisma.learningResource.findMany();
   }
 } 

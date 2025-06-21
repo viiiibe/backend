@@ -5,38 +5,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // Create topics
-  const topics = [
-    { name: 'Arrays', description: 'Array manipulation and algorithms' },
-    { name: 'Strings', description: 'String processing and manipulation' },
-    { name: 'Linked Lists', description: 'Linked list data structure' },
-    { name: 'Trees', description: 'Tree data structures and algorithms' },
-    { name: 'Graphs', description: 'Graph algorithms and traversal' },
-    { name: 'Dynamic Programming', description: 'Dynamic programming problems' },
-    { name: 'Binary Search', description: 'Binary search algorithms' },
-    { name: 'Two Pointers', description: 'Two pointer technique' },
-    { name: 'Sliding Window', description: 'Sliding window technique' },
-    { name: 'Stack', description: 'Stack data structure' },
-    { name: 'Queue', description: 'Queue data structure' },
-    { name: 'Heap', description: 'Heap data structure' },
-  ];
-
-  for (const topic of topics) {
-    await prisma.topic.upsert({
-      where: { name: topic.name },
-      update: {},
-      create: topic,
-    });
-  }
-
-  console.log('✅ Topics created');
-
-  // Get topic IDs for problem creation
-  const arraysTopic = await prisma.topic.findUnique({ where: { name: 'Arrays' } });
-  const stringsTopic = await prisma.topic.findUnique({ where: { name: 'Strings' } });
-  const dpTopic = await prisma.topic.findUnique({ where: { name: 'Dynamic Programming' } });
-
-  // Create sample problems
+  // Create sample problems with topics as string arrays
   const problems = [
     {
       title: 'Two Sum',
@@ -65,7 +34,7 @@ Constraints:
 - -109 <= target <= 109
 - Only one valid answer exists.`,
       complexity: ProblemComplexity.EASY,
-      topicId: arraysTopic!.id,
+      topics: ['Arrays', 'Hash Table'],
       testCases: [
         { input: '[2,7,11,15]\n9', expectedOutput: '[0,1]' },
         { input: '[3,2,4]\n6', expectedOutput: '[1,2]' },
@@ -97,7 +66,7 @@ Constraints:
 - 1 <= s.length <= 104
 - s consists of parentheses only '()[]{}'`,
       complexity: ProblemComplexity.EASY,
-      topicId: stringsTopic!.id,
+      topics: ['Strings', 'Stack'],
       testCases: [
         { input: '"()"', expectedOutput: 'true' },
         { input: '"()[]{}"', expectedOutput: 'true' },
@@ -129,7 +98,7 @@ Explanation: There are three ways to climb to the top.
 Constraints:
 - 1 <= n <= 45`,
       complexity: ProblemComplexity.EASY,
-      topicId: dpTopic!.id,
+      topics: ['Dynamic Programming', 'Math'],
       testCases: [
         { input: '2', expectedOutput: '2' },
         { input: '3', expectedOutput: '3' },
@@ -175,22 +144,36 @@ Constraints:
   const resources = [
     {
       type: 'BOOK_CHAPTER' as const,
-      title: 'Introduction to Algorithms (CLRS) - Chapter 1: The Role of Algorithms in Computing',
+      title: 'Introduction to Algorithms - Chapter 1: Foundations',
       url: 'https://mitpress.mit.edu/books/introduction-algorithms-third-edition',
-      metadata: { isbn: '978-0262033848', chapter: 1 },
+      topics: ['Algorithms', 'Data Structures'],
+      metadata: {
+        isbn: '978-0262033848',
+        chapter: 1,
+        author: 'Thomas H. Cormen'
+      }
     },
     {
       type: 'COURSE_LECTURE' as const,
       title: 'MIT 6.006 Introduction to Algorithms - Lecture 1: Algorithmic Thinking',
-      url: 'https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-006-introduction-to-algorithms-fall-2011/',
-      metadata: { course: 'MIT 6.006', lecture: 1 },
+      url: 'https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-006-introduction-to-algorithms-fall-2011/lecture-videos/lecture-1-algorithmic-thinking/',
+      topics: ['Algorithms', 'Problem Solving'],
+      metadata: {
+        course: 'MIT 6.006',
+        instructor: 'Prof. Erik Demaine',
+        year: 2011
+      }
     },
     {
       type: 'ARTICLE' as const,
-      title: 'Big O Notation Explained',
-      url: 'https://www.freecodecamp.org/news/big-o-notation-explained-with-examples/',
-      metadata: { author: 'freeCodeCamp' },
-    },
+      title: 'Dynamic Programming: From Novice to Advanced',
+      url: 'https://topcoder.com/community/competitive-programming/tutorials/dynamic-programming-from-novice-to-advanced/',
+      topics: ['Dynamic Programming'],
+      metadata: {
+        author: 'TopCoder',
+        difficulty: 'Intermediate'
+      }
+    }
   ];
 
   for (const resource of resources) {
@@ -201,14 +184,12 @@ Constraints:
     });
   }
 
-  console.log('✅ Learning resources created');
-
-  console.log('🎉 Database seeding completed!');
+  console.log('✅ Sample learning resources created');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error during seeding:', e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

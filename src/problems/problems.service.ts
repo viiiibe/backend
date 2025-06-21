@@ -9,7 +9,7 @@ export class ProblemsService {
   async findAll() {
     return this.prisma.problem.findMany({
       include: {
-        topic: true,
+        testCases: true,
       },
     });
   }
@@ -18,7 +18,38 @@ export class ProblemsService {
     return this.prisma.problem.findUnique({
       where: { id },
       include: {
-        topic: true,
+        testCases: true,
+      },
+    });
+  }
+
+  async findByTopic(topic: string) {
+    return this.prisma.problem.findMany({
+      where: {
+        topics: {
+          has: topic,
+        },
+      },
+      include: {
+        testCases: true,
+      },
+    });
+  }
+
+  async findByTopicsAndComplexity(topics: string[], complexity?: string) {
+    const where: any = {
+      topics: {
+        hasSome: topics,
+      },
+    };
+
+    if (complexity) {
+      where.complexity = complexity;
+    }
+
+    return this.prisma.problem.findMany({
+      where,
+      include: {
         testCases: true,
       },
     });

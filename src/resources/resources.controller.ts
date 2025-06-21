@@ -7,13 +7,13 @@ import { ResourcesService } from './resources.service';
 export class ResourcesController {
   constructor(private readonly resourcesService: ResourcesService) {}
 
-  @Get('topic/:topicId')
+  @Get('topic/:topic')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get resources by topic' })
   @ApiResponse({ status: 200, description: 'Resources retrieved' })
-  async findByTopic(@Param('topicId') topicId: string, @Req() req: any) {
+  async findByTopic(@Param('topic') topic: string, @Req() req: any) {
     // User must be authenticated to access learning resources
     const userId = req.user.id;
-    return this.resourcesService.findByTopic(parseInt(topicId, 10));
+    return this.resourcesService.findByTopic(topic);
   }
 } 

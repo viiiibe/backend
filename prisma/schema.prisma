@@ -49,37 +49,19 @@ model User {
   @@map("users")
 }
 
-// Topic model
-model Topic {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  problems           Problem[]
-  prerequisiteFor    TopicDependency[] @relation("PrerequisiteTopic")
-  dependsOn          TopicDependency[] @relation("DependentTopic")
-  topicResources     TopicResourceLink[]
-
-  @@map("topics")
-}
-
 // Problem model
 model Problem {
   id                String           @id @default(uuid())
   title             String
   description       String
   complexity        ProblemComplexity
-  topicId           Int              @map("topic_id")
+  topics            String[]         // Array of topic names
   isCustom          Boolean          @default(false) @map("is_custom")
   createdByUserId   String?          @map("created_by_user_id")
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
 
   // Relations
-  topic             Topic            @relation(fields: [topicId], references: [id])
   createdByUser     User?            @relation("CustomProblems", fields: [createdByUserId], references: [id])
   testCases         TestCase[]
   submissions       Submission[]
@@ -131,38 +113,10 @@ model LearningResource {
   title     String
   url       String       @unique
   metadata  Json?
+  topics    String[]     // Array of topic names this resource covers
   createdAt DateTime     @default(now()) @map("created_at")
 
-  // Relations
-  topicResources TopicResourceLink[]
-
   @@map("learning_resources")
-}
-
-// Topic Dependency model (Learning Graph)
-model TopicDependency {
-  prerequisiteTopicId Int    @map("prerequisite_topic_id")
-  dependentTopicId    Int    @map("dependent_topic_id")
-
-  // Relations
-  prerequisiteTopic   Topic  @relation("PrerequisiteTopic", fields: [prerequisiteTopicId], references: [id], onDelete: Cascade)
-  dependentTopic      Topic  @relation("DependentTopic", fields: [dependentTopicId], references: [id], onDelete: Cascade)
-
-  @@id([prerequisiteTopicId, dependentTopicId])
-  @@map("topic_dependencies")
-}
-
-// Topic-Resource Link model
-model TopicResourceLink {
-  topicId    Int @map("topic_id")
-  resourceId Int @map("resource_id")
-
-  // Relations
-  topic      Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  resource   LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-
-  @@id([topicId, resourceId])
-  @@map("topic_resources_link")
 }
 
 // Solved Problem model (for tracking user progress)
