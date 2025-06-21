@@ -56,6 +56,9 @@ AUTH0_AUDIENCE="your-api-identifier"
 AUTH0_ISSUER="https://your-domain.auth0.com/"
 
 # LLM Configuration
+# LLM_API_URL can be either:
+# 1. Complete URL with path: "https://api.openai.com/v1/chat/completions"
+# 2. Base URL only: "https://api.openai.com" (will auto-append /v1/chat/completions)
 LLM_API_URL="https://your-openai-compatible-api.com/v1/chat/completions"
 LLM_MODEL="gpt-4"
 LLM_TEMPERATURE=0.7

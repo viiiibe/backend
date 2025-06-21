@@ -70,7 +70,8 @@ function extractTestCases(content: string): Array<{ input: string; expectedOutpu
     const input = match[1].trim();
     const output = match[2].trim();
     
-    if (input && output) {
+    // Ensure both input and output are not empty
+    if (input && output && input.length > 0 && output.length > 0) {
       testCases.push({
         input: cleanHtmlContent(input),
         expectedOutput: cleanHtmlContent(output),
@@ -95,7 +96,12 @@ function extractTestCases(content: string): Array<{ input: string; expectedOutpu
     isHidden: true,
   });
 
-  return testCases;
+  // Validate that all test cases have non-empty expectedOutput
+  return testCases.map(testCase => ({
+    ...testCase,
+    expectedOutput: testCase.expectedOutput || 'Expected output not available',
+    input: testCase.input || 'Test input not available'
+  }));
 }
 
 async function importProblems(jsonFilePath: string) {
@@ -144,11 +150,22 @@ async function importProblems(jsonFilePath: string) {
 
         // Create test cases for the problem
         for (const testCase of testCases) {
+          // Validate test case data before creating
+          if (!testCase.expectedOutput || testCase.expectedOutput.trim().length === 0) {
+            console.warn(`⚠️  Skipping test case for "${leetcodeProblem.title}" - empty expectedOutput`);
+            continue;
+          }
+          
+          if (!testCase.input || testCase.input.trim().length === 0) {
+            console.warn(`⚠️  Skipping test case for "${leetcodeProblem.title}" - empty input`);
+            continue;
+          }
+
           await prisma.testCase.create({
             data: {
               problemId: problem.id,
-              input: testCase.input,
-              expectedOutput: testCase.expectedOutput,
+              input: testCase.input.trim(),
+              expectedOutput: testCase.expectedOutput.trim(),
               isHidden: testCase.isHidden,
             },
           });

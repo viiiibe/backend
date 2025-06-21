@@ -15,6 +15,8 @@ export class ChatService {
   async handleMessage(message: string, userId: string) {
     // Fetch chat history for context
     const chatHistory = await this.getChatHistoryForContext(userId);
+
+    console.log('chatHistory', chatHistory);
     
     // Generate response using LLM with chat history and MCPs
     const { response, actions } = await this.llmService.generateResponse(
@@ -22,6 +24,9 @@ export class ChatService {
       chatHistory,
       userId,
     );
+
+    console.log('response', response);
+    console.log('actions', actions);
 
     // Execute any MCP actions if present
     let enhancedResponse = response;

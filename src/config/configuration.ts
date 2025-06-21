@@ -17,6 +17,9 @@ export default () => ({
     },
   },
   llm: {
+    // LLM_API_URL can be either:
+    // 1. Complete URL with path: "https://api.openai.com/v1/chat/completions"
+    // 2. Base URL only: "https://api.openai.com" (will auto-append /v1/chat/completions)
     apiUrl: process.env.LLM_API_URL,
     model: process.env.LLM_MODEL || 'gpt-4',
     temperature: parseFloat(process.env.LLM_TEMPERATURE) || 0.7,

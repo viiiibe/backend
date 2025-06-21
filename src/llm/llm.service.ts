@@ -22,7 +22,7 @@ export class LLMService {
     private readonly configService: ConfigService,
     private readonly mcpService: MCPService,
   ) {
-    this.apiUrl = this.configService.get<string>('llm.apiUrl');
+    this.apiUrl = this.buildApiUrl();
     this.model = this.configService.get<string>('llm.model');
     this.temperature = this.configService.get<number>('llm.temperature');
     this.maxTokens = this.configService.get<number>('llm.maxTokens');
@@ -30,6 +30,40 @@ export class LLMService {
     if (!this.apiUrl) {
       this.logger.warn('LLM API URL not found. LLM functionality will be limited.');
     }
+  }
+
+  private buildApiUrl(): string {
+    const baseUrl = this.configService.get<string>('llm.apiUrl');
+    
+    if (!baseUrl) {
+      this.logger.warn('LLM_API_URL environment variable is not set');
+      return '';
+    }
+
+    try {
+      // If the URL already contains a path, use it as is
+      if (baseUrl.includes('/v1/') || baseUrl.includes('/api/')) {
+        this.logger.debug(`Using provided API URL as-is: ${baseUrl}`);
+        return baseUrl;
+      }
+
+      // If it's just a base URL, append the standard OpenAI chat completions endpoint
+      const url = new URL(baseUrl);
+      if (!url.pathname || url.pathname === '/') {
+        url.pathname = '/v1/chat/completions';
+        this.logger.debug(`Constructed API URL: ${url.toString()}`);
+      }
+      return url.toString();
+    } catch (error) {
+      this.logger.error('Invalid LLM API URL format:', error);
+      this.logger.error(`Provided URL: ${baseUrl}`);
+      return '';
+    }
+  }
+
+  // Public method to get the constructed API URL for debugging
+  getApiUrl(): string {
+    return this.apiUrl;
   }
 
   async generateResponse(
@@ -92,6 +126,12 @@ export class LLMService {
         body: JSON.stringify(payload),
       });
 
+      // Debug logging for LLM response
+      this.logger.debug('=== LLM RESPONSE DEBUG ===');
+      this.logger.debug(`Request URL: ${this.apiUrl}`);
+      this.logger.debug(`Full Response: ${JSON.stringify(response, null, 2)}`);
+      this.logger.debug('=== END LLM RESPONSE DEBUG ===');
+
       if (!response.ok) {
         throw new Error(`LLM API request failed: ${response.status} ${response.statusText}`);
       }
@@ -99,11 +139,6 @@ export class LLMService {
       const data: LLMResponse = await response.json();
       const llmResponse = data.choices[0]?.message?.content || 'No response generated';
       
-      // Debug logging for LLM response
-      this.logger.debug('=== LLM RESPONSE DEBUG ===');
-      this.logger.debug(`Raw LLM Response: ${JSON.stringify(data, null, 2)}`);
-      this.logger.debug(`Extracted Response: ${llmResponse}`);
-      this.logger.debug('=== END LLM RESPONSE DEBUG ===');
       
       // Extract any MCP function calls from the response
       const actions = this.extractMCPActions(llmResponse);
