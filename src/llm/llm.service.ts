@@ -16,4 +16,4 @@ export class LLMService {
       hints: ['This is a placeholder hint.'],
     };
   }
-} 
+}

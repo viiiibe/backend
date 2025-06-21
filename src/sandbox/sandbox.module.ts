@@ -5,4 +5,4 @@ import { SandboxService } from './sandbox.service';
   providers: [SandboxService],
   exports: [SandboxService],
 })
-export class SandboxModule {} 
+export class SandboxModule {}

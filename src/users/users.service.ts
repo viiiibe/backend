@@ -22,17 +22,24 @@ export class UsersService {
     });
   }
 
-  async createUser(id: string, data?: { email?: string; name?: string }) {
+  async createUser(
+    id: string,
+    data?: { email?: string; name?: string; pictureUrl?: string },
+  ) {
     return this.prisma.user.create({
       data: {
         id,
         email: data?.email,
         name: data?.name,
+        pictureUrl: data?.pictureUrl,
       },
     });
   }
 
-  async findOrCreateUser(id: string, data?: { email?: string; name?: string }) {
+  async findOrCreateUser(
+    id: string,
+    data?: { email?: string; name?: string; pictureUrl?: string },
+  ) {
     const existingUser = await this.findById(id);
     if (existingUser) {
       return existingUser;
@@ -42,23 +49,25 @@ export class UsersService {
   }
 
   async getUserStats(userId: string) {
-    const [totalSubmissions, passedSubmissions, solvedProblems] = await Promise.all([
-      this.prisma.submission.count({
-        where: { userId },
-      }),
-      this.prisma.submission.count({
-        where: { userId, status: 'PASSED' },
-      }),
-      this.prisma.solvedProblem.count({
-        where: { userId },
-      }),
-    ]);
+    const [totalSubmissions, passedSubmissions, solvedProblems] =
+      await Promise.all([
+        this.prisma.submission.count({
+          where: { userId },
+        }),
+        this.prisma.submission.count({
+          where: { userId, status: 'PASSED' },
+        }),
+        this.prisma.solvedProblem.count({
+          where: { userId },
+        }),
+      ]);
 
     return {
       totalSubmissions,
       passedSubmissions,
       solvedProblems,
-      successRate: totalSubmissions > 0 ? (passedSubmissions / totalSubmissions) * 100 : 0,
+      successRate:
+        totalSubmissions > 0 ? (passedSubmissions / totalSubmissions) * 100 : 0,
     };
   }
-} 
+}

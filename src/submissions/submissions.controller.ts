@@ -1,5 +1,10 @@
 import { Controller, Get, Post, Body, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { SubmissionsService } from './submissions.service';
 import { SubmitSolutionDto } from '../common/dto/base.dto';
 
@@ -29,4 +34,4 @@ export class SubmissionsController {
     };
     return this.submissionsService.create(submissionData);
   }
-} 
+}

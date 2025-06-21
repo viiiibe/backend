@@ -29,7 +29,9 @@ export class MCPService {
       case 'execute_code':
         return this.executeCode(args);
       default:
-        throw new BadRequestException(`Unsupported MCP function: ${functionName}`);
+        throw new BadRequestException(
+          `Unsupported MCP function: ${functionName}`,
+        );
     }
   }
 
@@ -86,7 +88,11 @@ export class MCPService {
     // fetch problem test cases
     const problem = await this.problemsService.findById(problemId);
     if (!problem) throw new BadRequestException('Invalid problemId');
-    const execResult = await this.sandboxService.executeCode(code, language, problem.testCases);
+    const execResult = await this.sandboxService.executeCode(
+      code,
+      language,
+      problem.testCases,
+    );
     return execResult;
   }
-} 
+}

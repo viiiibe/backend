@@ -5,4 +5,4 @@ import { LLMService } from './llm.service';
   providers: [LLMService],
   exports: [LLMService],
 })
-export class LLMModule {} 
+export class LLMModule {}

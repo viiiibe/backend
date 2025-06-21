@@ -21,4 +21,4 @@ export class SubmissionsService {
       orderBy: { submittedAt: 'desc' },
     });
   }
-} 
+}

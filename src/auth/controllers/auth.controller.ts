@@ -1,5 +1,10 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth.service';
 import { Public } from '../decorators/public.decorator';
@@ -33,4 +38,4 @@ export class AuthController {
   getProfile(@Req() req) {
     return req.user;
   }
-} 
+}

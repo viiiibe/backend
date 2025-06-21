@@ -7,9 +7,14 @@ import { ResourcesModule } from '../resources/resources.module';
 import { SandboxModule } from '../sandbox/sandbox.module';
 
 @Module({
-  imports: [ProblemsModule, UsersModule, SubmissionsModule, ResourcesModule, SandboxModule],
+  imports: [
+    ProblemsModule,
+    UsersModule,
+    SubmissionsModule,
+    ResourcesModule,
+    SandboxModule,
+  ],
   providers: [MCPService],
   exports: [MCPService],
 })
 export class MCPModule {}
- 

@@ -23,9 +23,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: any) {
+    // Auth0 JWT payload structure:
+    // - sub: user ID (e.g., "auth0|123456789")
+    // - email: user email
+    // - name: user name (standard claim)
+    // - nickname: alternative name field
+    // - picture: profile picture URL
+    // - Custom namespace claims: https://your-namespace/name, https://your-namespace/picture
+
     return {
       id: payload.sub,
       email: payload.email,
+      name:
+        payload.name ||
+        payload.nickname ||
+        payload['https://your-namespace/name'],
+      pictureUrl: payload.picture || payload['https://your-namespace/picture'],
     };
   }
-} 
+}

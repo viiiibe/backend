@@ -1,7 +1,19 @@
-import { IsString, IsOptional, IsUUID, IsEnum, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ProblemComplexity, SubmissionStatus, ResourceType } from '@prisma/client';
+import {
+  ProblemComplexity,
+  SubmissionStatus,
+  ResourceType,
+} from '@prisma/client';
 
 export class PaginationDto {
   @ApiPropertyOptional({ default: 1 })
@@ -95,6 +107,41 @@ export class ChatRequestDto {
   context?: Record<string, any>;
 }
 
+export class ChatMessageDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  message: string;
+
+  @ApiProperty()
+  response: string;
+
+  @ApiProperty()
+  isRead: boolean;
+
+  @ApiProperty()
+  createdAt: Date;
+}
+
+export class ChatMessagesResponseDto {
+  @ApiProperty({ type: [ChatMessageDto] })
+  messages: ChatMessageDto[];
+
+  @ApiProperty()
+  total: number;
+
+  @ApiProperty()
+  unreadCount: number;
+}
+
+export class ClearChatMessagesDto {
+  @ApiPropertyOptional({ description: 'Clear only unread messages' })
+  @IsOptional()
+  @IsBoolean()
+  unreadOnly?: boolean;
+}
+
 export class BulkUploadSolutionDto {
   @ApiProperty()
   @IsString()
@@ -119,4 +166,4 @@ export class BulkUploadSolutionDto {
   @ApiProperty()
   @IsString()
   timestamp: string;
-} 
+}

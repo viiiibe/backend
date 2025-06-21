@@ -1,5 +1,10 @@
 import { Controller, Get, Param, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ProblemsService } from './problems.service';
 
 @ApiTags('Problems')
@@ -24,4 +29,4 @@ export class ProblemsController {
     // User must be authenticated to access problems
     return this.problemsService.findById(id);
   }
-} 
+}

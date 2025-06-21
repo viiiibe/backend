@@ -28,4 +28,4 @@ export class ResourcesService {
   async findAll() {
     return this.prisma.learningResource.findMany();
   }
-} 
+}

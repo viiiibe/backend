@@ -7,4 +7,4 @@ import { ResourcesController } from './resources.controller';
   providers: [ResourcesService],
   exports: [ResourcesService],
 })
-export class ResourcesModule {} 
+export class ResourcesModule {}

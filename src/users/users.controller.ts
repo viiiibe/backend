@@ -1,17 +1,24 @@
 import { Controller, Get, Post, Body, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 
 class CreateUserDto {
   id: string;
   email?: string;
   name?: string;
+  pictureUrl?: string;
 }
 
 class FindOrCreateUserDto {
   id: string;
   email?: string;
   name?: string;
+  pictureUrl?: string;
 }
 
 @ApiTags('Users')
@@ -25,7 +32,14 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User profile retrieved' })
   async getMyProfile(@Req() req: any) {
     const userId = req.user.id;
-    return this.usersService.findById(userId);
+    const userEmail = req.user.email;
+
+    // Automatically find or create user from Auth0 data
+    return this.usersService.findOrCreateUser(userId, {
+      email: userEmail,
+      name: req.user.name,
+      pictureUrl: req.user.pictureUrl,
+    });
   }
 
   @Get('me/stats')
@@ -45,17 +59,22 @@ export class UsersController {
     return this.usersService.createUser(createUserDto.id, {
       email: createUserDto.email,
       name: createUserDto.name,
+      pictureUrl: createUserDto.pictureUrl,
     });
   }
 
   @Post('find-or-create')
   @ApiOperation({ summary: 'Find user by ID or create if not exists' })
-  @ApiResponse({ status: 200, description: 'User found or created successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'User found or created successfully',
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   async findOrCreateUser(@Body() findOrCreateUserDto: FindOrCreateUserDto) {
     return this.usersService.findOrCreateUser(findOrCreateUserDto.id, {
       email: findOrCreateUserDto.email,
       name: findOrCreateUserDto.name,
+      pictureUrl: findOrCreateUserDto.pictureUrl,
     });
   }
-} 
+}

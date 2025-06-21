@@ -9,7 +9,12 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(auth0Id: string, email: string, name?: string, pictureUrl?: string) {
+  async validateUser(
+    auth0Id: string,
+    email: string,
+    name?: string,
+    pictureUrl?: string,
+  ) {
     let user = await this.prisma.user.findUnique({
       where: { id: auth0Id },
     });
@@ -41,4 +46,4 @@ export class AuthService {
       },
     };
   }
-} 
+}

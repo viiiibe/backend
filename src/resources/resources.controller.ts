@@ -1,5 +1,10 @@
 import { Controller, Get, Param, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ResourcesService } from './resources.service';
 
 @ApiTags('Resources')
@@ -16,4 +21,4 @@ export class ResourcesController {
     const userId = req.user.id;
     return this.resourcesService.findByTopic(topic);
   }
-} 
+}

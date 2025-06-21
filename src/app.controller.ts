@@ -45,34 +45,54 @@ export class AppController {
   /** Example: /api/test1?userId=auth0|123 */
   @Get('test1')
   @Public()
-  @ApiOperation({ summary: 'Test MCP fetch_user_history (example curl: curl http://localhost:1337/api/test1?userId=user123)' })
+  @ApiOperation({
+    summary:
+      'Test MCP fetch_user_history (example curl: curl http://localhost:1337/api/test1?userId=user123)',
+  })
   async testUserHistory(@Query('userId') userId: string) {
-    const result = await this.mcpService.handleMCPCall('fetch_user_history', { userId });
+    const result = await this.mcpService.handleMCPCall('fetch_user_history', {
+      userId,
+    });
     return result;
   }
 
   /** Example: /api/test2?topic=Graphs */
   @Get('test2')
   @Public()
-  @ApiOperation({ summary: 'Test MCP fetch_learning_resources (example: curl http://localhost:1337/api/test2?topic=Graphs)' })
+  @ApiOperation({
+    summary:
+      'Test MCP fetch_learning_resources (example: curl http://localhost:1337/api/test2?topic=Graphs)',
+  })
   async testResources(@Query('topic') topic: string) {
-    const result = await this.mcpService.handleMCPCall('fetch_learning_resources', { topic });
+    const result = await this.mcpService.handleMCPCall(
+      'fetch_learning_resources',
+      { topic },
+    );
     return result;
   }
 
   /** Example: /api/test3?userId=auth0|123 */
   @Get('test3')
   @Public()
-  @ApiOperation({ summary: 'Test MCP check_solution_history (example: curl http://localhost:1337/api/test3?userId=user123)' })
+  @ApiOperation({
+    summary:
+      'Test MCP check_solution_history (example: curl http://localhost:1337/api/test3?userId=user123)',
+  })
   async testSolutionHistory(@Query('userId') userId: string) {
-    const result = await this.mcpService.handleMCPCall('check_solution_history', { userId });
+    const result = await this.mcpService.handleMCPCall(
+      'check_solution_history',
+      { userId },
+    );
     return result;
   }
 
   /** Example POST body: { "code": "print(1)", "language": "python", "problemId": "uuid" } */
   @Get('test4')
   @Public()
-  @ApiOperation({ summary: 'Test MCP execute_code (curl example omitted, should be POST in real implementation)' })
+  @ApiOperation({
+    summary:
+      'Test MCP execute_code (curl example omitted, should be POST in real implementation)',
+  })
   async testExecuteCodeDemo() {
     // simple demo runs placeholder execution
     const result = await this.mcpService.handleMCPCall('execute_code', {
@@ -82,4 +102,4 @@ export class AppController {
     });
     return result;
   }
-} 
+}
