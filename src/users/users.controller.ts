@@ -26,6 +26,12 @@ class FindOrCreateUserDto {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  private generateRandomEmail(): string {
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const timestamp = Date.now();
+    return `user_${randomId}_${timestamp}@example.com`;
+  }
+
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get my profile' })
@@ -39,7 +45,7 @@ export class UsersController {
     console.log('=== END REQUEST OBJECT ===');
 
     const userId = req.user.id;
-    const userEmail = req.user.email;
+    const userEmail = req.user.email || this.generateRandomEmail();
 
     console.log('User data from Auth0:', {
       id: userId,
