@@ -71,7 +71,13 @@ export class ChatService {
 
   private enhanceResponseWithMCPResults(
     originalResponse: string,
-    actions: Array<{ functionName: string; args: any; result?: any; success: boolean; error?: string }>,
+    actions: Array<{
+      functionName: string;
+      args: any;
+      result?: any;
+      success: boolean;
+      error?: string;
+    }>,
   ): string {
     try {
       const successfulResults = actions.filter((r) => r.success);

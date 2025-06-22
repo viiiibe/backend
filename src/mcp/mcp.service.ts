@@ -64,10 +64,13 @@ export class MCPService {
 
     if (!complexity) {
       const complexities: ProblemComplexity[] = ['EASY', 'MEDIUM', 'HARD'];
-      complexity = complexities[Math.floor(Math.random() * complexities.length)];
+      complexity =
+        complexities[Math.floor(Math.random() * complexities.length)];
     }
 
-    const problemComplexity = (complexity as string).toUpperCase() as ProblemComplexity;
+    const problemComplexity = (
+      complexity as string
+    ).toUpperCase() as ProblemComplexity;
 
     return this.problemsService.findOneByTopicAndDifficulty(
       topic,

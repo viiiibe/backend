@@ -82,7 +82,9 @@ class StandaloneMCPServer {
           try {
             const result = await this.handleMCPCall(funcName, args);
             return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+              content: [
+                { type: 'text', text: JSON.stringify(result, null, 2) },
+              ],
             };
           } catch (error) {
             console.error(`Error executing MCP function ${funcName}:`, error);
@@ -140,7 +142,8 @@ class StandaloneMCPServer {
 
     if (!complexity) {
       const complexities: ProblemComplexity[] = ['EASY', 'MEDIUM', 'HARD'];
-      complexity = complexities[Math.floor(Math.random() * complexities.length)];
+      complexity =
+        complexities[Math.floor(Math.random() * complexities.length)];
     }
 
     return this.problemsService.findOneByTopicAndDifficulty(
@@ -199,15 +202,30 @@ class StandaloneMCPServer {
 
   private getToolDefinition(functionName: string): any {
     // Duplicated from mcp.service.ts for standalone usage.
-    const toolDefinitions: Record<string, { description: string, inputSchema: any }> = {
+    const toolDefinitions: Record<
+      string,
+      { description: string; inputSchema: any }
+    > = {
       get_problem_by_topic: {
         description: 'Get a coding problem by topic and complexity level',
         inputSchema: {
           type: 'object',
           properties: {
-            topic: { type: 'string', description: 'The topic of the problem (e.g., arrays, dynamic programming)' },
-            complexity: { type: 'string', enum: ['EASY', 'MEDIUM', 'HARD'], description: 'The complexity level of the problem' },
-            excludeIds: { type: 'array', items: { type: 'string' }, description: 'Problem IDs to exclude from the search' },
+            topic: {
+              type: 'string',
+              description:
+                'The topic of the problem (e.g., arrays, dynamic programming)',
+            },
+            complexity: {
+              type: 'string',
+              enum: ['EASY', 'MEDIUM', 'HARD'],
+              description: 'The complexity level of the problem',
+            },
+            excludeIds: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Problem IDs to exclude from the search',
+            },
           },
           required: ['topic', 'complexity'],
         },
@@ -216,7 +234,12 @@ class StandaloneMCPServer {
         description: 'Fetch user history and statistics',
         inputSchema: {
           type: 'object',
-          properties: { userId: { type: 'string', description: 'The user ID to fetch history for' } },
+          properties: {
+            userId: {
+              type: 'string',
+              description: 'The user ID to fetch history for',
+            },
+          },
           required: ['userId'],
         },
       },
@@ -224,7 +247,12 @@ class StandaloneMCPServer {
         description: 'Fetch learning resources for a specific topic',
         inputSchema: {
           type: 'object',
-          properties: { topic: { type: 'string', description: 'The topic to fetch resources for' } },
+          properties: {
+            topic: {
+              type: 'string',
+              description: 'The topic to fetch resources for',
+            },
+          },
           required: ['topic'],
         },
       },
@@ -233,8 +261,15 @@ class StandaloneMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
-            userId: { type: 'string', description: 'The user ID to check history for' },
-            limit: { type: 'number', description: 'Maximum number of submissions to return', default: 10 },
+            userId: {
+              type: 'string',
+              description: 'The user ID to check history for',
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of submissions to return',
+              default: 10,
+            },
           },
           required: ['userId'],
         },
@@ -245,9 +280,18 @@ class StandaloneMCPServer {
           type: 'object',
           properties: {
             code: { type: 'string', description: 'The code to execute' },
-            language: { type: 'string', description: 'The programming language' },
-            problemId: { type: 'string', description: 'The problem ID for context' },
-            userId: { type: 'string', description: 'The user ID executing the code' },
+            language: {
+              type: 'string',
+              description: 'The programming language',
+            },
+            problemId: {
+              type: 'string',
+              description: 'The problem ID for context',
+            },
+            userId: {
+              type: 'string',
+              description: 'The user ID executing the code',
+            },
           },
           required: ['code', 'language', 'problemId', 'userId'],
         },
@@ -286,4 +330,4 @@ if (require.main === module) {
   });
 }
 
-export { StandaloneMCPServer }; 
+export { StandaloneMCPServer };

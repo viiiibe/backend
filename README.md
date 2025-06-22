@@ -17,7 +17,7 @@ Vibe backend service.
 - **Database**: PostgreSQL with Prisma ORM
 - **Cache**: Redis
 - **Authentication**: Auth0
-- **LLM**: OpenAI-compatible API endpoint
+- **LLM**: Multi-provider support (OpenAI, Anthropic Claude, Ollama)
 - **Code Execution**: Daytona/ACI.dev integration
 - **Documentation**: Swagger/OpenAPI
 - **Containerization**: Docker & Docker Compose
@@ -36,12 +36,11 @@ Vibe backend service.
 ```bash
 git clone <repository-url>
 cd backend
-cp env.example .env.local
 ```
 
 ### 2. Environment Configuration
 
-Edit `.env.local` with your configuration:
+Create a `.env.local` file with your configuration:
 
 ```bash
 # Database Configuration
@@ -56,6 +55,10 @@ AUTH0_AUDIENCE="your-api-identifier"
 AUTH0_ISSUER="https://your-domain.auth0.com/"
 
 # LLM Configuration
+# Choose your LLM provider: 'openai', 'anthropic', or 'ollama'
+LLM_PROVIDER="openai"
+
+# OpenAI Configuration
 # LLM_API_URL can be either:
 # 1. Complete URL with path: "https://api.openai.com/v1/chat/completions"
 # 2. Base URL only: "https://api.openai.com" (will auto-append /v1/chat/completions)
@@ -64,10 +67,20 @@ LLM_MODEL="gpt-4"
 LLM_TEMPERATURE=0.7
 LLM_MAX_TOKENS=4000
 
+# Anthropic Configuration
+ANTHROPIC_API_KEY="your-anthropic-api-key"
+ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"
+ANTHROPIC_MAX_TOKENS=4000
+
+# Ollama Configuration (for local LLM)
+LLM_USE_OLLAMA=false
+
 # Code Execution (Daytona/ACI)
 ACI_API_KEY="your-aci-api-key"
 ACI_WORKSPACE_ID="your-workspace-id"
 ```
+
+**Note**: See [LLM_PROVIDERS.md](./LLM_PROVIDERS.md) for detailed configuration options for each LLM provider.
 
 ### 3. Using Docker Compose (Recommended)
 

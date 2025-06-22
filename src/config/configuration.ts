@@ -17,6 +17,10 @@ export default () => ({
     },
   },
   llm: {
+    // LLM provider selection: 'openai', 'anthropic', or 'ollama'
+    provider: process.env.LLM_PROVIDER || 'openai',
+
+    // OpenAI Configuration
     // LLM_API_URL can be either:
     // 1. Complete URL with path: "https://api.openai.com/v1/chat/completions"
     // 2. Base URL only: "https://api.openai.com" (will auto-append /v1/chat/completions)
@@ -24,6 +28,14 @@ export default () => ({
     model: process.env.LLM_MODEL || 'gpt-4',
     temperature: parseFloat(process.env.LLM_TEMPERATURE) || 0.7,
     maxTokens: parseInt(process.env.LLM_MAX_TOKENS, 10) || 4000,
+
+    // Anthropic Configuration
+    anthropic: {
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+      maxTokens: parseInt(process.env.ANTHROPIC_MAX_TOKENS, 10) || 4000,
+    },
+
     // Enable Ollama integration (set to true to use Ollama instead of external API)
     useOllama: process.env.LLM_USE_OLLAMA === 'true',
   },

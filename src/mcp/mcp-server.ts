@@ -73,14 +73,12 @@ export class MCPServer {
         this.logger.warn(`No tool definition found for function: ${funcName}`);
         continue;
       }
-      
+
       const handler = async (args: any) => {
         try {
           const result = await this.mcpService.handleMCPCall(funcName, args);
           return {
-            content: [
-              { type: 'text', text: JSON.stringify(result, null, 2) },
-            ],
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
           };
         } catch (error) {
           this.logger.error(`Error executing MCP function ${funcName}:`, error);
@@ -103,7 +101,10 @@ export class MCPServer {
   }
 
   private getToolDefinition(functionName: string): any {
-    const toolDefinitions: Record<string, { description: string, inputSchema: any }> = {
+    const toolDefinitions: Record<
+      string,
+      { description: string; inputSchema: any }
+    > = {
       get_problem_by_topic: {
         description: 'Get a coding problem by topic and complexity level',
         inputSchema: {
@@ -111,7 +112,8 @@ export class MCPServer {
           properties: {
             topic: {
               type: 'string',
-              description: 'The topic of the problem (e.g., arrays, dynamic programming)',
+              description:
+                'The topic of the problem (e.g., arrays, dynamic programming)',
             },
             complexity: {
               type: 'string',
@@ -215,4 +217,4 @@ export class MCPServer {
   async stop() {
     this.logger.log('MCP Server stopped');
   }
-} 
+}
