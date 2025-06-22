@@ -1,25 +1,25 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: postgres
-    environment:
-      POSTGRES_DB: vibe
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - vibe-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # # PostgreSQL Database
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: postgres
+  #   environment:
+  #     POSTGRES_DB: vibe
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - vibe-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
   # Redis Cache
   redis:
@@ -55,8 +55,8 @@ services:
     ports:
       - "1337:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      # postgres:
+      #   condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -78,8 +78,8 @@ services:
     ports:
       - "10000:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      # postgres:
+      #   condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -90,7 +90,7 @@ services:
     # command: npm run start:dev
 
 volumes:
-  postgres_data:
+  # postgres_data:
   redis_data:
 
 networks:
