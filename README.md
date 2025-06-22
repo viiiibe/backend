@@ -1,209 +1,153 @@
-# Vibe Backend
+# AI Coding Coach
 
-Vibe backend service.
+**Your personal AI assistant for acing FAANG interviews.**
 
-## Features
+AI Coding Coach is a next-generation learning platform designed to provide a personalized preparation path for software engineering interviews at top tech companies. It addresses the common pitfalls of one-size-fits-all platforms by tailoring the learning experience to your individual knowledge and skill level.
 
-- **Personalized Problem Selection**: AI-driven problem recommendations based on user history and weaknesses
-- **Code Execution**: Secure sandbox for running and testing user solutions
-- **Progress Tracking**: Comprehensive user progress and statistics
-- **Learning Resources**: Curated learning materials and resources
-- **MCP Integration**: Model Context Protocol for LLM-tool communication
-- **Auth0 Authentication**: Secure user authentication and authorization
+## The Problem
 
-## Tech Stack
+Traditional coding platforms like LeetCode are fantastic resources, but they often present a generic curriculum. Users might find content that is either too basic or too advanced, leading to inefficient study sessions and knowledge gaps. Furthermore, these platforms lack a truly interactive and adaptive guide to navigate the vast landscape of topics and problems.
 
-- **Framework**: NestJS (TypeScript)
-- **Database**: PostgreSQL with Prisma ORM
-- **Cache**: Redis
-- **Authentication**: Auth0
-- **LLM**: Multi-provider support (OpenAI, Anthropic Claude, Ollama)
-- **Code Execution**: Daytona/ACI.dev integration
-- **Documentation**: Swagger/OpenAPI
-- **Containerization**: Docker & Docker Compose
+## Our Solution
 
-## Prerequisites
+AI Coding Coach leverages the power of Large Language Models (LLMs) to create a dynamic and personalized learning journey. By initially integrating your coding history from platforms such as LeetCode (currently used for demo purposes), our AI assistant analyzes your submissions on our platform. In the future, we plan to transition to open-source problem banks, using platforms like LeetCode solely for bootstrapping user history.
 
-- Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL (if running locally)
-- Redis (if running locally)
+---
 
-## Quick Start
+## How It Works
 
-### 1. Clone and Setup
+The system is composed of three main components:
+
+1.  **Frontend**: A responsive web application (built with Next.js and Tailwind CSS) that provides the chat interface, code editor, and user profile pages.
+2.  **Backend**: A robust NestJS server that orchestrates the core logic. It handles user requests, manages the database, and communicates with the LLM and other services.
+3.  **LLM & MCP (Model-Controller-Plugin)**: The brain of the operation. The LLM uses a custom MCP layer to interact with various "tools," such as fetching user data, querying the problem database, and calling the code execution sandbox. This enables complex, multi-step reasoning to deliver a truly intelligent experience.
+
+## User Stories
+
+-   **As a new user**, I want to import my LeetCode history so the system can immediately understand my current skill level.
+-   **As a student**, I want to ask the AI "What should I work on today?" and receive a relevant problem that targets my weakest topic.
+-   **As a developer**, I want to submit my solution to a problem and get instant feedback on whether it's correct and efficient.
+-   **As a learner**, if my solution fails, I want to receive a small hint about the edge case I might be missing, not the full answer.
+-   **As a goal-oriented user**, I want to view my profile to see a visual breakdown of the topics I've mastered and where I need more practice.
+
+## Technology Stack
+
+-   **Frontend**: Next.js, React, Tailwind CSS, Auth0, Monaco Editor, Socket.io
+-   **Backend**: NestJS, PostgreSQL, Prisma, Redis, Anthropic SDK
+-   **Code Execution**: ACI -> Daytona integration
+-   **Deployment**: Docker
+
+---
+
+## 🚀 Getting Started: Local Setup
+
+Follow these instructions to get the project running locally for development and testing.
+
+### Prerequisites
+
+-   [Docker](https://www.docker.com/products/docker-desktop/) and Docker Compose
+-   [Node.js](https://nodejs.org/en/) (for interacting with Prisma CLI, optional)
+-   An [Auth0 Account](https://auth0.com/) (the free tier is sufficient)
+-   API keys for an LLM provider (e.g., OpenAI)
+
+### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
-cd backend
+git clone <your-repository-url>
+cd <your-repository-name>
 ```
 
-### 2. Environment Configuration
+### 2. Configure Environment Variables
 
-Create a `.env.local` file with your configuration:
+Create a `.env` file in the root of the project by copying the example file:
 
 ```bash
-# Database Configuration
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/vibe?schema=public"
+cp .env.example .env
+```
 
-# Redis Configuration
-REDIS_URL="redis://localhost:6379"
+Now, open the `.env` file and fill in the required values.
 
-# Auth0 Configuration
-AUTH0_DOMAIN="your-domain.auth0.com"
-AUTH0_AUDIENCE="your-api-identifier"
-AUTH0_ISSUER="https://your-domain.auth0.com/"
+#### `.env` File Setup
 
-# LLM Configuration
-# Choose your LLM provider: 'openai', 'anthropic', or 'ollama'
-LLM_PROVIDER="openai"
+```ini
+# Application
+PORT=3001
+NODE_ENV=development
+CORS_ORIGIN=http://localhost:3000
+API_PREFIX=api
 
-# OpenAI Configuration
-# LLM_API_URL can be either:
-# 1. Complete URL with path: "https://api.openai.com/v1/chat/completions"
-# 2. Base URL only: "https://api.openai.com" (will auto-append /v1/chat/completions)
-LLM_API_URL="https://your-openai-compatible-api.com/v1/chat/completions"
-LLM_MODEL="gpt-4"
-LLM_TEMPERATURE=0.7
-LLM_MAX_TOKENS=4000
-
-# Anthropic Configuration
-ANTHROPIC_API_KEY="your-anthropic-api-key"
-ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"
-ANTHROPIC_MAX_TOKENS=4000
-
-# Ollama Configuration (for local LLM)
-LLM_USE_OLLAMA=false
-
-# Code Execution (Daytona/ACI)
+# Code Execution Sandbox (ACI/Daytona)
 ACI_API_KEY="your-aci-api-key"
-ACI_WORKSPACE_ID="your-workspace-id"
+ACI_WORKSPACE_ID="your-aci-workspace-id"
+
+# Database (matches docker-compose.yml)
+DATABASE_URL="postgresql://postgres:password@db:5432/faang-coach?schema=public"
+
+# Redis (matches docker-compose.yml)
+REDIS_URL="redis://redis:6379"
+
+# Auth0 - Get these from your Auth0 Application settings
+# Make sure to set up a "Regular Web Application" in Auth0
+AUTH0_DOMAIN="your-auth0-domain.auth0.com"
+AUTH0_AUDIENCE="your-api-audience" # e.g., http://localhost:3001
+AUTH0_ISSUER="https://your-auth0-domain.auth0.com/"
+AUTH0_CLIENT_ID="your-auth0-client-id" # For backend machine-to-machine auth if needed
+AUTH0_CLIENT_SECRET="your-auth0-client-secret"
+AUTH0_CALLBACK_URL="http://localhost:3000/api/auth/callback"
+
+# LLM Provider - Choose and configure one
+# 'anthropic' or 'ollama'
+LLM_PROVIDER="anthropic"
+LLM_API_URL="ollama url if using ollama"
+LLM_MODEL=qwen2.5:32b # if using local model
+# For Anthropic, the API key is read from ANTHROPIC_API_KEY
+ANTHROPIC_API_KEY="your api key"
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
+# No key needed for Ollama if running locally.
+
+# Logging & Rate Limiting
+LOG_LEVEL=info
+RATE_LIMIT_TTL=60
+RATE_LIMIT_LIMIT=100
 ```
+**Note:** For the frontend, you will also need a `.env.local` file with the public Auth0 variables (`NEXT_PUBLIC_AUTH0_DOMAIN`, `NEXT_PUBLIC_AUTH0_CLIENT_ID`) for the Auth0 React SDK.
 
-**Note**: See [LLM_PROVIDERS.md](./LLM_PROVIDERS.md) for detailed configuration options for each LLM provider.
+### 3. Build and Run with Docker Compose
 
-### 3. Using Docker Compose (Recommended)
+This command will build the Docker images for the backend, database, and other services and start them.
 
 ```bash
-# Start all services (PostgreSQL, Redis, API)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f api
-
-# Stop services
-docker-compose down
+docker-compose up --build
 ```
 
-### 4. Local Development
+The backend server will be available at `http://localhost:3001`.
+
+### 4. Apply Database Migrations
+
+With the services running, open a new terminal and run the Prisma migration command to set up the database schema.
 
 ```bash
-# Install dependencies
-npm install
-
-# Generate Prisma client
-npm run db:generate
-
-# Run database migrations
-npm run db:migrate
-
-# Start development server
-npm run start:dev
+docker-compose exec app npx prisma migrate dev --name init
 ```
 
-## API Documentation
-
-Once the server is running, visit:
-- **Swagger UI**: http://localhost:3000/docs
-- **Health Check**: http://localhost:3000/api/health
-
-## Database Schema
-
-The application uses the following main entities:
-
-- **Users**: User profiles and authentication
-- **Problems**: Coding problems with test cases and topic arrays
-- **Submissions**: User code submissions and results
-- **Learning Resources**: Books, courses, articles with topic arrays
-- **Solved Problems**: User progress tracking
-
-## Development
-
-### Available Scripts
+You can also seed the database with initial data (topics, problems, etc.) if a seed script is configured:
 
 ```bash
-# Development
-npm run start:dev          # Start in development mode
-npm run start:debug        # Start with debugger
-
-# Database
-npm run db:generate        # Generate Prisma client
-npm run db:push           # Push schema to database
-npm run db:migrate        # Run migrations
-npm run db:studio         # Open Prisma Studio
-
-# Code Quality
-npm run lint              # Run ESLint
-npm run format            # Format code with Prettier
-npm run test              # Run tests
-npm run test:watch        # Run tests in watch mode
+docker-compose exec app npx prisma db seed
 ```
 
-### Project Structure
+### 5. Accessing the Application
 
-```
-src/
-├── api/                    # API route handlers
-├── auth/                   # Authentication & authorization
-├── chat/                   # Chat interface
-├── common/                 # Shared DTOs and utilities
-├── config/                 # Configuration files
-├── db/                     # Database layer (Prisma)
-├── llm/                    # LLM integration
-├── mcp/                    # Model Context Protocol
-├── problems/               # Problem management
-├── resources/              # Learning resources
-├── sandbox/                # Code execution
-├── submissions/            # Code submissions
-├── users/                  # User management
-├── app.module.ts           # Main application module
-└── main.ts                 # Application entry point
-```
+-   **Backend API**: `http://localhost:3001`
+-   **Frontend App**: `http://localhost:3000` (once you build and run it)
+-   **Swagger API Docs**: `http://localhost:3001/api-docs` (if configured)
 
-## API Endpoints
+You are now ready to start developing!
 
-### Authentication
-- `POST /api/auth/login` - Login with Auth0
-- `GET /api/auth/callback` - Auth0 callback
-- `GET /api/auth/profile` - Get user profile
+---
+## Future Work
 
-### Problems
-- `GET /api/problems` - List problems
-- `GET /api/problems/:id` - Get problem details
-- `POST /api/problems/upload` - Upload custom problem
-
-### Submissions
-- `POST /api/submissions` - Submit solution
-- `GET /api/submissions/user/:userId` - Get user submissions
-
-### Chat
-- `POST /api/chat` - Send chat message
-
-### Users
-- `GET /api/users/:id` - Get user details
-- `GET /api/users/:id/stats` - Get user statistics
-
-### Resources
-- `GET /api/resources/topic/:topic` - Get resources by topic
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details. 
+-   **Team/Group Features**: Allow users to form study groups and compete on leaderboards.
+-   **More Integrations**: Add support for importing history from other platforms like HackerRank or Codeforces.
+-   **Advanced Visualizations**: Create more in-depth graphs and charts to visualize learning paths and progress over time.
+-   **Mock Interviews**: Simulate a full mock interview experience with a timer and a sequence of questions generated by the AI.
