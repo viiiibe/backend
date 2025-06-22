@@ -133,13 +133,7 @@ export class MCPServer {
         description: 'Fetch user history and statistics',
         inputSchema: {
           type: 'object',
-          properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to fetch history for',
-            },
-          },
-          required: ['userId'],
+          properties: {},
         },
       },
       fetch_learning_resources: {
@@ -160,17 +154,12 @@ export class MCPServer {
         inputSchema: {
           type: 'object',
           properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to check history for',
-            },
             limit: {
               type: 'number',
               description: 'Maximum number of submissions to return',
               default: 10,
             },
           },
-          required: ['userId'],
         },
       },
       execute_code: {
@@ -182,20 +171,8 @@ export class MCPServer {
               type: 'string',
               description: 'The code to execute',
             },
-            language: {
-              type: 'string',
-              description: 'The programming language',
-            },
-            problemId: {
-              type: 'string',
-              description: 'The problem ID for context',
-            },
-            userId: {
-              type: 'string',
-              description: 'The user ID executing the code',
-            },
           },
-          required: ['code', 'language', 'problemId', 'userId'],
+          required: ['code'],
         },
       },
       get_all_topics: {

@@ -101,11 +101,9 @@ export class MCPService {
   }
 
   private async executeCode(args: any) {
-    const { code, language, problemId, userId } = args ?? {};
-    if (!code || !language || !problemId || !userId) {
-      throw new BadRequestException(
-        'code, language, problemId, and userId are required',
-      );
+    const { code, language = 'python', problemId, userId } = args ?? {};
+    if (!code || !problemId || !userId) {
+      throw new BadRequestException('code, problemId, and userId are required');
     }
     // fetch problem test cases
     const problem = await this.problemsService.findById(problemId);

@@ -36,6 +36,7 @@ export class LLMService {
     maxTokens: number;
   };
   private readonly anthropicClient: Anthropic;
+  private userLastProblemId = new Map<string, string>();
 
   constructor(
     private readonly configService: ConfigService,
@@ -499,15 +500,26 @@ export class LLMService {
     userId: string,
   ): Promise<any[]> {
     const actions = [];
+    let lastProblemId: string | undefined = this.userLastProblemId.get(userId);
 
     for (const toolCall of toolCalls) {
       try {
         const functionName = toolCall.function.name;
         const args = JSON.parse(toolCall.function.arguments);
 
-        // Add userId to the arguments if not already present
+        // Inject userId if missing
         if (!args.userId) {
           args.userId = userId;
+        }
+
+        // Inject problemId for execute_code if missing
+        if (functionName === 'execute_code') {
+          if (!args.problemId && lastProblemId) {
+            args.problemId = lastProblemId;
+          }
+          if (!args.language) {
+            args.language = 'python';
+          }
         }
 
         this.logger.debug(
@@ -516,6 +528,12 @@ export class LLMService {
 
         // Call the MCP function directly
         const result = await this.mcpService.handleMCPCall(functionName, args);
+
+        // Capture and persist problemId from get_problem_by_topic results
+        if (functionName === 'get_problem_by_topic' && result?.id) {
+          lastProblemId = result.id;
+          this.userLastProblemId.set(userId, lastProblemId);
+        }
 
         actions.push({
           functionName,
@@ -626,13 +644,7 @@ export class LLMService {
           description: 'Fetch user history and statistics',
           parameters: {
             type: 'object',
-            properties: {
-              userId: {
-                type: 'string',
-                description: 'The user ID to fetch history for',
-              },
-            },
-            required: ['userId'],
+            properties: {},
           },
         },
       },
@@ -661,17 +673,12 @@ export class LLMService {
           parameters: {
             type: 'object',
             properties: {
-              userId: {
-                type: 'string',
-                description: 'The user ID to check history for',
-              },
               limit: {
                 type: 'number',
                 description: 'Maximum number of submissions to return',
                 default: 10,
               },
             },
-            required: ['userId'],
           },
         },
       },
@@ -687,20 +694,8 @@ export class LLMService {
                 type: 'string',
                 description: 'The code to execute',
               },
-              language: {
-                type: 'string',
-                description: 'The programming language',
-              },
-              problemId: {
-                type: 'string',
-                description: 'The problem ID for context',
-              },
-              userId: {
-                type: 'string',
-                description: 'The user ID executing the code',
-              },
             },
-            required: ['code', 'language', 'problemId', 'userId'],
+            required: ['code'],
           },
         },
       },
@@ -754,13 +749,7 @@ export class LLMService {
         description: 'Fetch user history and statistics',
         input_schema: {
           type: 'object',
-          properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to fetch history for',
-            },
-          },
-          required: ['userId'],
+          properties: {},
         },
       },
       fetch_learning_resources: {
@@ -783,17 +772,12 @@ export class LLMService {
         input_schema: {
           type: 'object',
           properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to check history for',
-            },
             limit: {
               type: 'number',
               description: 'Maximum number of submissions to return',
               default: 10,
             },
           },
-          required: ['userId'],
         },
       },
       execute_code: {
@@ -806,20 +790,8 @@ export class LLMService {
               type: 'string',
               description: 'The code to execute',
             },
-            language: {
-              type: 'string',
-              description: 'The programming language',
-            },
-            problemId: {
-              type: 'string',
-              description: 'The problem ID for context',
-            },
-            userId: {
-              type: 'string',
-              description: 'The user ID executing the code',
-            },
           },
-          required: ['code', 'language', 'problemId', 'userId'],
+          required: ['code'],
         },
       },
       get_all_topics: {

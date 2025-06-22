@@ -175,11 +175,12 @@ class StandaloneMCPServer {
   }
 
   private async executeCode(args: any) {
-    const { code, language, problemId, userId } = args ?? {};
-    if (!code || !language || !problemId || !userId) {
-      throw new Error('code, language, problemId, and userId are required');
+    const { code } = args ?? {};
+    const language = args.language ?? 'python';
+    if (!code) {
+      throw new Error('code is required');
     }
-    const problem = await this.problemsService.findById(problemId);
+    const problem = await this.problemsService.findById(args.problemId);
     if (!problem) throw new Error('Invalid problemId');
     const execResult = await this.sandboxService.executeCode(
       code,
@@ -187,8 +188,8 @@ class StandaloneMCPServer {
       problem.testCases,
     );
     await this.submissionsService.create({
-      userId,
-      problemId,
+      userId: args.userId,
+      problemId: args.problemId,
       code,
       language,
       status: execResult.allPassed ? 'PASSED' : 'FAILED',
@@ -234,13 +235,7 @@ class StandaloneMCPServer {
         description: 'Fetch user history and statistics',
         inputSchema: {
           type: 'object',
-          properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to fetch history for',
-            },
-          },
-          required: ['userId'],
+          properties: {},
         },
       },
       fetch_learning_resources: {
@@ -261,17 +256,12 @@ class StandaloneMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to check history for',
-            },
             limit: {
               type: 'number',
               description: 'Maximum number of submissions to return',
               default: 10,
             },
           },
-          required: ['userId'],
         },
       },
       execute_code: {
@@ -280,20 +270,8 @@ class StandaloneMCPServer {
           type: 'object',
           properties: {
             code: { type: 'string', description: 'The code to execute' },
-            language: {
-              type: 'string',
-              description: 'The programming language',
-            },
-            problemId: {
-              type: 'string',
-              description: 'The problem ID for context',
-            },
-            userId: {
-              type: 'string',
-              description: 'The user ID executing the code',
-            },
           },
-          required: ['code', 'language', 'problemId', 'userId'],
+          required: ['code'],
         },
       },
       get_all_topics: {
