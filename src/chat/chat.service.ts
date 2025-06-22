@@ -85,28 +85,6 @@ export class ChatService {
 
       let enhancedResponse = originalResponse;
 
-      if (successfulResults.length > 0) {
-        const resultsText = successfulResults
-          .map((r) => {
-            const resultStr =
-              typeof r.result === 'object'
-                ? JSON.stringify(r.result, null, 2)
-                : String(r.result);
-            return `**${r.functionName}**:\n${resultStr}`;
-          })
-          .join('\n\n');
-
-        enhancedResponse += `\n\n--- MCP Results ---\n${resultsText}`;
-      }
-
-      if (failedResults.length > 0) {
-        const errorText = failedResults
-          .map((r) => `**${r.functionName}**: Error - ${r.error}`)
-          .join('\n');
-
-        enhancedResponse += `\n\n--- MCP Errors ---\n${errorText}`;
-      }
-
       return enhancedResponse;
     } catch (error) {
       console.error('Error enhancing response with MCP results:', error);
