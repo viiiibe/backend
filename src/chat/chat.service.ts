@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../db/prisma.service';
 import { LLMService } from '../llm/llm.service';
 import { MCPService } from '../mcp/mcp.service';
-import { ChatMessagesResponseDto } from '../common/dto/base.dto';
+import { ChatMessagesResponseDto, ChatResponseDto } from '../common/dto/base.dto';
 
 @Injectable()
 export class ChatService {
@@ -12,14 +12,14 @@ export class ChatService {
     private readonly mcpService: MCPService,
   ) {}
 
-  async handleMessage(message: string, userId: string) {
+  async handleMessage(message: string, userId: string): Promise<ChatResponseDto> {
     // Fetch chat history for context
     const chatHistory = await this.getChatHistoryForContext(userId);
 
     console.log('chatHistory', chatHistory);
 
     // Generate response using LLM with chat history and MCPs
-    const { response, actions } = await this.llmService.generateResponse(
+    const { response, actions, thinkingProcess } = await this.llmService.generateResponse(
       message,
       chatHistory,
       userId,
@@ -27,6 +27,7 @@ export class ChatService {
 
     console.log('response', response);
     console.log('actions', actions);
+    console.log('thinkingProcess', thinkingProcess);
 
     // Enhance response with MCP results if any actions were executed
     let enhancedResponse = response;
@@ -47,6 +48,7 @@ export class ChatService {
     return {
       response: enhancedResponse,
       actions: actions || [],
+      thinkingProcess: thinkingProcess || null,
       messageId: chatMessage.id,
     };
   }

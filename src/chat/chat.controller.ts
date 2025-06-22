@@ -19,6 +19,7 @@ import { ChatService } from './chat.service';
 import {
   ChatRequestDto,
   ChatMessagesResponseDto,
+  ChatResponseDto,
   ClearChatMessagesDto,
   PaginationDto,
 } from '../common/dto/base.dto';
@@ -31,8 +32,12 @@ export class ChatController {
   @Post()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send chat message' })
-  @ApiResponse({ status: 200, description: 'Message processed' })
-  async handleMessage(@Body() request: ChatRequestDto, @Req() req: any) {
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Message processed',
+    type: ChatResponseDto
+  })
+  async handleMessage(@Body() request: ChatRequestDto, @Req() req: any): Promise<ChatResponseDto> {
     // Get userId from authenticated JWT token
     const userId = req.user.id;
     return this.chatService.handleMessage(request.message, userId);

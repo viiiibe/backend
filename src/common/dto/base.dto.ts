@@ -167,3 +167,48 @@ export class BulkUploadSolutionDto {
   @IsString()
   timestamp: string;
 }
+
+export class ThinkingProcessTurnDto {
+  @ApiProperty()
+  turnNumber: number;
+
+  @ApiProperty()
+  assistantMessage: string;
+
+  @ApiProperty({ type: [Object], description: 'Tool calls made in this turn' })
+  toolCalls: any[];
+
+  @ApiProperty({ type: [Object], description: 'Results of tool executions' })
+  toolResults: any[];
+
+  @ApiProperty()
+  timestamp: Date;
+}
+
+export class ThinkingProcessDto {
+  @ApiProperty()
+  totalTurns: number;
+
+  @ApiProperty({ type: [ThinkingProcessTurnDto] })
+  turns: ThinkingProcessTurnDto[];
+
+  @ApiProperty()
+  totalToolCalls: number;
+
+  @ApiProperty()
+  processingTimeMs: number;
+}
+
+export class ChatResponseDto {
+  @ApiProperty()
+  response: string;
+
+  @ApiProperty({ type: [Object] })
+  actions: any[];
+
+  @ApiPropertyOptional({ type: ThinkingProcessDto })
+  thinkingProcess?: ThinkingProcessDto;
+
+  @ApiProperty()
+  messageId: string;
+}

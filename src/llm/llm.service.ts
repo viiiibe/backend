@@ -112,19 +112,29 @@ export class LLMService {
     message: string,
     chatHistory: Array<{ message: string; response: string }>,
     userId: string,
-  ): Promise<{ response: string; actions: any[] }> {
+  ): Promise<{ response: string; actions: any[]; thinkingProcess?: any }> {
+    const startTime = Date.now();
+    
     try {
+      let result;
       if (this.useOllama) {
-        return this.generateResponseWithMultiTurnOllama(message, chatHistory, userId);
+        result = await this.generateResponseWithMultiTurnOllama(message, chatHistory, userId);
       } else if (this.provider === 'anthropic') {
-        return this.generateResponseWithMultiTurnAnthropic(message, chatHistory, userId);
+        result = await this.generateResponseWithMultiTurnAnthropic(message, chatHistory, userId);
       } else {
-        return this.generateResponseWithMultiTurnExternalAPI(
+        result = await this.generateResponseWithMultiTurnExternalAPI(
           message,
           chatHistory,
           userId,
         );
       }
+
+      // Add processing time to thinking process if it exists
+      if (result.thinkingProcess) {
+        result.thinkingProcess.processingTimeMs = Date.now() - startTime;
+      }
+
+      return result;
     } catch (error) {
       this.logger.error('Error generating LLM response:', error);
       return {
@@ -139,9 +149,10 @@ export class LLMService {
     message: string,
     chatHistory: Array<{ message: string; response: string }>,
     userId: string,
-  ): Promise<{ response: string; actions: any[] }> {
+  ): Promise<{ response: string; actions: any[]; thinkingProcess?: any }> {
     let currentTurn = 0;
     let allActions: any[] = [];
+    let thinkingProcessTurns: any[] = [];
     let conversationMessages = [
       {
         role: 'system' as const,
@@ -201,6 +212,15 @@ export class LLMService {
       const llmResponse = data.message?.content || 'No response generated';
       const toolCalls = data.tool_calls || [];
 
+      // Track this turn's thinking process
+      const turnData = {
+        turnNumber: currentTurn,
+        assistantMessage: llmResponse,
+        toolCalls: toolCalls,
+        toolResults: [],
+        timestamp: new Date(),
+      };
+
       // Add the assistant's response to conversation history
       conversationMessages.push({
         role: 'assistant' as const,
@@ -223,9 +243,23 @@ export class LLMService {
 
         conversationMessages.push(...toolResults);
         this.logger.debug(`Turn ${currentTurn} - Added tool results to conversation`);
+
+        // Update turn data with tool results
+        turnData.toolResults = turnActions.map(action => ({
+          functionName: action.functionName,
+          success: action.success,
+          result: action.result,
+          error: action.error,
+        }));
       } else {
         // No more tool calls, we're done
         this.logger.debug(`Turn ${currentTurn} - No tool calls, conversation complete`);
+      }
+
+      // Add turn data to thinking process
+      thinkingProcessTurns.push(turnData);
+
+      if (toolCalls.length === 0) {
         break;
       }
     }
@@ -238,9 +272,18 @@ export class LLMService {
     this.logger.debug(`Multi-turn conversation completed in ${currentTurn} turns`);
     this.logger.debug(`Total actions executed: ${allActions.length}`);
 
+    // Build thinking process data
+    const thinkingProcess = {
+      totalTurns: currentTurn,
+      turns: thinkingProcessTurns,
+      totalToolCalls: allActions.length,
+      processingTimeMs: 0, // Will be set by the parent method
+    };
+
     return {
       response: finalResponse,
       actions: allActions,
+      thinkingProcess,
     };
   }
 
@@ -248,7 +291,7 @@ export class LLMService {
     message: string,
     chatHistory: Array<{ message: string; response: string }>,
     userId: string,
-  ): Promise<{ response: string; actions: any[] }> {
+  ): Promise<{ response: string; actions: any[]; thinkingProcess?: any }> {
     if (!this.anthropicConfig.apiKey || !this.anthropicClient) {
       return {
         response:
@@ -259,6 +302,7 @@ export class LLMService {
 
     let currentTurn = 0;
     let allActions: any[] = [];
+    let thinkingProcessTurns: any[] = [];
     let conversationMessages = this.convertHistoryToAnthropicMessages(chatHistory, message);
 
     while (currentTurn < this.maxTurns) {
@@ -311,6 +355,15 @@ export class LLMService {
         llmResponse = 'No response generated';
       }
 
+      // Track this turn's thinking process
+      const turnData = {
+        turnNumber: currentTurn,
+        assistantMessage: llmResponse,
+        toolCalls: toolCalls,
+        toolResults: [],
+        timestamp: new Date(),
+      };
+
       // Add the assistant's response to conversation history
       conversationMessages.push({
         role: 'assistant' as const,
@@ -337,9 +390,23 @@ export class LLMService {
 
         conversationMessages.push(...toolResults);
         this.logger.debug(`Turn ${currentTurn} - Added tool results to conversation`);
+
+        // Update turn data with tool results
+        turnData.toolResults = turnActions.map(action => ({
+          functionName: action.functionName,
+          success: action.success,
+          result: action.result,
+          error: action.error,
+        }));
       } else {
         // No more tool calls, we're done
         this.logger.debug(`Turn ${currentTurn} - No tool calls, conversation complete`);
+      }
+
+      // Add turn data to thinking process
+      thinkingProcessTurns.push(turnData);
+
+      if (toolCalls.length === 0) {
         break;
       }
     }
@@ -368,9 +435,18 @@ export class LLMService {
     this.logger.debug(`Multi-turn conversation completed in ${currentTurn} turns`);
     this.logger.debug(`Total actions executed: ${allActions.length}`);
 
+    // Build thinking process data
+    const thinkingProcess = {
+      totalTurns: currentTurn,
+      turns: thinkingProcessTurns,
+      totalToolCalls: allActions.length,
+      processingTimeMs: 0, // Will be set by the parent method
+    };
+
     return {
       response: finalTextResponse,
       actions: allActions,
+      thinkingProcess,
     };
   }
 
@@ -378,7 +454,7 @@ export class LLMService {
     message: string,
     chatHistory: Array<{ message: string; response: string }>,
     userId: string,
-  ): Promise<{ response: string; actions: any[] }> {
+  ): Promise<{ response: string; actions: any[]; thinkingProcess?: any }> {
     if (!this.apiUrl) {
       return {
         response:
@@ -389,6 +465,7 @@ export class LLMService {
 
     let currentTurn = 0;
     let allActions: any[] = [];
+    let thinkingProcessTurns: any[] = [];
     let conversationMessages = [
       {
         role: 'system' as const,
@@ -445,6 +522,15 @@ export class LLMService {
       const llmResponse = data.choices[0]?.message?.content || 'No response generated';
       const toolCalls = data.choices[0]?.message?.tool_calls || [];
 
+      // Track this turn's thinking process
+      const turnData = {
+        turnNumber: currentTurn,
+        assistantMessage: llmResponse,
+        toolCalls: toolCalls,
+        toolResults: [],
+        timestamp: new Date(),
+      };
+
       // Add the assistant's response to conversation history
       conversationMessages.push({
         role: 'assistant' as const,
@@ -467,9 +553,23 @@ export class LLMService {
 
         conversationMessages.push(...toolResults);
         this.logger.debug(`Turn ${currentTurn} - Added tool results to conversation`);
+
+        // Update turn data with tool results
+        turnData.toolResults = turnActions.map(action => ({
+          functionName: action.functionName,
+          success: action.success,
+          result: action.result,
+          error: action.error,
+        }));
       } else {
         // No more tool calls, we're done
         this.logger.debug(`Turn ${currentTurn} - No tool calls, conversation complete`);
+      }
+
+      // Add turn data to thinking process
+      thinkingProcessTurns.push(turnData);
+
+      if (toolCalls.length === 0) {
         break;
       }
     }
@@ -482,9 +582,18 @@ export class LLMService {
     this.logger.debug(`Multi-turn conversation completed in ${currentTurn} turns`);
     this.logger.debug(`Total actions executed: ${allActions.length}`);
 
+    // Build thinking process data
+    const thinkingProcess = {
+      totalTurns: currentTurn,
+      turns: thinkingProcessTurns,
+      totalToolCalls: allActions.length,
+      processingTimeMs: 0, // Will be set by the parent method
+    };
+
     return {
       response: finalResponse,
       actions: allActions,
+      thinkingProcess,
     };
   }
 
@@ -832,6 +941,11 @@ Guidelines:
 6. Make multiple tool calls when you need different pieces of information
 7. Always consider the user's history and preferences when making recommendations
 8. Don't hesitate to make 2-3 sequential calls if needed to provide the best response
+9. Never modify the user's code, only execute it in the sandbox
+10. Don't suggest the solution to the user, only provide hints and guidance
+11. When generating code, don't use any unicode characters, use only ASCII.
+12. When generating a sample solution function, use the function name defined in the functionName field of the get_problem_by_topic function output.
+13. Only try to execute code once, if it doesn't work, don't try again. If there are some syntax errors, tell so to the user so they can fix them and submit a new solution.
 
 You have access to the following functions that you can call when needed:
 - get_all_topics: Get all available problem topics. Use this first to understand what topics are available.
