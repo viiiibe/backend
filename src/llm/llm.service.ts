@@ -946,6 +946,8 @@ Guidelines:
 11. When generating code, don't use any unicode characters, use only ASCII.
 12. When generating a sample solution function, use the function name defined in the functionName field of the get_problem_by_topic function output.
 13. Only try to execute code once, if it doesn't work, don't try again. If there are some syntax errors, tell so to the user so they can fix them and submit a new solution.
+14. When running execute_code, don't add additional data. Only send the code provided by the user.
+15. When running execute_code, don't add any test cases. The test cases are added automatically by the platform, so you will break it if you will add your own. JUST SUBMIT CODE AS IT IS!!!!!!!!!!!!!!
 
 You have access to the following functions that you can call when needed:
 - get_all_topics: Get all available problem topics. Use this first to understand what topics are available.
