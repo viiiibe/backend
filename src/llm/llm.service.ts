@@ -744,14 +744,6 @@ export class LLMService {
           required: ['topic', 'complexity'],
         },
       },
-      fetch_user_history: {
-        name: 'fetch_user_history',
-        description: 'Fetch user history and statistics',
-        input_schema: {
-          type: 'object',
-          properties: {},
-        },
-      },
       fetch_learning_resources: {
         name: 'fetch_learning_resources',
         description: 'Fetch learning resources for a specific topic',
@@ -821,18 +813,15 @@ When a user asks for help with coding problems, learning resources, or wants to 
 
 EXAMPLES OF MULTI-TURN WORKFLOWS:
 1. User asks for a problem recommendation:
-   - First call: get_all_topics() to see available topics
-   - Second call: fetch_user_history() to understand their skill level
+   - First call: check_solution_history() to see if the user has any previous submissions, we'll use this information to figure out if the user has some gaps in their knowledge to focus on those topics
+   - Second call: get_all_topics() to see available topics
    - Third call: get_problem_by_topic() with appropriate complexity based on their history
 
+   3. User submits code for evaluation:
+   - execute_code() to run their solution
 2. User asks for learning resources:
    - First call: get_all_topics() to confirm the topic exists
    - Second call: fetch_learning_resources() to get the actual resources
-
-3. User submits code for evaluation:
-   - First call: check_solution_history() to see their recent attempts
-   - Second call: execute_code() to run their solution
-   - Third call: get_problem_by_topic() to get the problem details for context
 
 Guidelines:
 1. Be helpful and encouraging
@@ -847,7 +836,6 @@ Guidelines:
 You have access to the following functions that you can call when needed:
 - get_all_topics: Get all available problem topics. Use this first to understand what topics are available.
 - get_problem_by_topic: Get a coding problem by topic and complexity
-- fetch_user_history: Get user's learning history and statistics
 - fetch_learning_resources: Get learning resources for a specific topic
 - check_solution_history: Check user's recent solution submissions
 - execute_code: Execute code in a sandbox environment
