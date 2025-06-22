@@ -1,13 +1,11 @@
-import {
-  Client,
-  StdioClientTransport,
-} from '@modelcontextprotocol/sdk/dist/cjs/client';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class MCPClient {
   private readonly logger = new Logger(MCPClient.name);
-  private client: Client;
+  private client: any;
 
   constructor() {
     this.initializeClient();
@@ -18,11 +16,16 @@ export class MCPClient {
       name: 'vibe-backend-mcp-client',
       version: '1.0.0',
     });
-
-    this.client.connect(new StdioClientTransport());
+    // Do not connect here automatically. The consumer of this service
+    // should be responsible for establishing a connection with a
+    // specific transport when needed.
   }
 
   async listTools() {
+    if (!this.client || !this.client.isConnected) {
+      this.logger.error('Attempted to list tools while disconnected.');
+      throw new Error('MCP client is not connected');
+    }
     try {
       const response = await this.client.listTools();
       return response.tools;
@@ -33,6 +36,10 @@ export class MCPClient {
   }
 
   async callTool(name: string, arguments_: any) {
+    if (!this.client || !this.client.isConnected) {
+      this.logger.error(`Attempted to call tool ${name} while disconnected.`);
+      throw new Error('MCP client is not connected');
+    }
     try {
       const response = await this.client.callTool({
         name,
@@ -46,6 +53,8 @@ export class MCPClient {
   }
 
   async disconnect() {
-    await this.client.close();
+    if (this.client?.isConnected) {
+      await this.client.close();
+    }
   }
 } 

@@ -494,12 +494,12 @@ Guidelines:
 5. Keep responses concise but informative
 
 You have access to the following functions that you can call when needed:
+- get_all_topics: Get all available problem topics. Always use this function to get the list of topics before calling any other function.
 - get_problem_by_topic: Get a coding problem by topic and complexity
 - fetch_user_history: Get user's learning history and statistics
 - fetch_learning_resources: Get learning resources for a specific topic
 - check_solution_history: Check user's recent solution submissions
 - execute_code: Execute code in a sandbox environment
-- get_all_topics: Get all available problem topics
 
 Use these functions to provide personalized and contextual assistance to users.`;
   }

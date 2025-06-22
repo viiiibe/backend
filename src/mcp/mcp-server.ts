@@ -1,83 +1,109 @@
-import {
-  Server,
-  StdioServerTransport,
-  Tool,
-} from '@modelcontextprotocol/sdk/dist/cjs/server';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Injectable, Logger } from '@nestjs/common';
+import { z } from 'zod';
 import { MCPService } from './mcp.service';
+
+function jsonSchemaToZodShape(schema: any): any {
+  const shape: any = {};
+  if (!schema.properties) {
+    return shape;
+  }
+  for (const key in schema.properties) {
+    const prop = schema.properties[key];
+    let zodType;
+    switch (prop.type) {
+      case 'string':
+        if (prop.enum) {
+          zodType = z.enum(prop.enum);
+        } else {
+          zodType = z.string();
+        }
+        break;
+      case 'number':
+        zodType = z.number();
+        break;
+      case 'array':
+        // Assuming string array based on existing definitions
+        zodType = z.array(z.string());
+        break;
+      default:
+        zodType = z.any();
+    }
+    if (prop.description) {
+      zodType = zodType.describe(prop.description);
+    }
+    if (!schema.required?.includes(key)) {
+      zodType = zodType.optional();
+    }
+    if (prop.default) {
+      zodType = zodType.default(prop.default);
+    }
+    shape[key] = zodType;
+  }
+  return shape;
+}
 
 @Injectable()
 export class MCPServer {
   private readonly logger = new Logger(MCPServer.name);
-  private server: Server;
+  private server: any;
 
   constructor(private readonly mcpService: MCPService) {
     this.initializeServer();
   }
 
   private initializeServer() {
-    this.server = new Server(
-      {
-        name: 'vibe-backend-mcp-server',
-        version: '1.0.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      },
-    );
+    this.server = new McpServer({
+      name: 'vibe-backend-mcp-server',
+      version: '1.0.0',
+    });
 
-    // Register tools
     this.registerTools();
 
-    // Start the server
     this.server.connect(new StdioServerTransport());
   }
 
   private registerTools() {
-    // Get all available functions and create tools
     const availableFunctions = this.mcpService.getAvailableFunctions();
-    const tools = availableFunctions.map(funcName => this.createToolFromFunction(funcName));
 
-    // Register list tools handler
-    this.server.setRequestHandler('tools/list', async () => {
-      return {
-        tools: tools,
-      };
-    });
-
-    // Register call tool handler
-    this.server.setRequestHandler('tools/call', async (request) => {
-      const { name, arguments: args } = request.params;
-      
-      try {
-        const result = await this.mcpService.handleMCPCall(name, args);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        this.logger.error(`Error executing MCP function ${name}:`, error);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: ${error.message}`,
-            },
-          ],
-          isError: true,
-        };
+    for (const funcName of availableFunctions) {
+      const definition = this.getToolDefinition(funcName);
+      if (!definition) {
+        this.logger.warn(`No tool definition found for function: ${funcName}`);
+        continue;
       }
-    });
+      
+      const handler = async (args: any) => {
+        try {
+          const result = await this.mcpService.handleMCPCall(funcName, args);
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify(result, null, 2) },
+            ],
+          };
+        } catch (error) {
+          this.logger.error(`Error executing MCP function ${funcName}:`, error);
+          return {
+            content: [{ type: 'text', text: `Error: ${error.message}` }],
+            isError: true,
+          };
+        }
+      };
+
+      this.server.registerTool(
+        funcName,
+        {
+          description: definition.description,
+          inputSchema: jsonSchemaToZodShape(definition.inputSchema),
+        },
+        handler,
+      );
+    }
   }
 
-  private createToolFromFunction(functionName: string): Tool {
-    const toolDefinitions = {
+  private getToolDefinition(functionName: string): any {
+    const toolDefinitions: Record<string, { description: string, inputSchema: any }> = {
       get_problem_by_topic: {
         description: 'Get a coding problem by topic and complexity level',
         inputSchema: {
@@ -89,7 +115,7 @@ export class MCPServer {
             },
             complexity: {
               type: 'string',
-              enum: ['easy', 'medium', 'hard'],
+              enum: ['EASY', 'MEDIUM', 'HARD'],
               description: 'The complexity level of the problem',
             },
             excludeIds: {
@@ -179,16 +205,7 @@ export class MCPServer {
       },
     };
 
-    const definition = toolDefinitions[functionName];
-    if (!definition) {
-      throw new Error(`No tool definition found for function: ${functionName}`);
-    }
-
-    return {
-      name: functionName,
-      description: definition.description,
-      inputSchema: definition.inputSchema,
-    };
+    return toolDefinitions[functionName];
   }
 
   async start() {

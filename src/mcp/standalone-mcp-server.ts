@@ -1,19 +1,44 @@
-import {
-  Server,
-  StdioServerTransport,
-  Tool,
-} from '@modelcontextprotocol/sdk/dist/cjs/server';
-import { PrismaClient } from '@prisma/client';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+import type { PrismaService } from '../db/prisma.service';
 import { ProblemsService } from '../problems/problems.service';
 import { UsersService } from '../users/users.service';
 import { SubmissionsService } from '../submissions/submissions.service';
 import { ResourcesService } from '../resources/resources.service';
 import { SandboxService } from '../sandbox/sandbox.service';
+import type { ProblemComplexity } from '@prisma/client';
 
-// Standalone MCP server that doesn't depend on NestJS
+function jsonSchemaToZodShape(schema: any): any {
+  const shape: any = {};
+  if (!schema.properties) return shape;
+  for (const key in schema.properties) {
+    const prop = schema.properties[key];
+    let zodType;
+    switch (prop.type) {
+      case 'string':
+        zodType = prop.enum ? z.enum(prop.enum) : z.string();
+        break;
+      case 'number':
+        zodType = z.number();
+        break;
+      case 'array':
+        zodType = z.array(z.string());
+        break;
+      default:
+        zodType = z.any();
+    }
+    if (prop.description) zodType = zodType.describe(prop.description);
+    if (!schema.required?.includes(key)) zodType = zodType.optional();
+    if (prop.default) zodType = zodType.default(prop.default);
+    shape[key] = zodType;
+  }
+  return shape;
+}
+
 class StandaloneMCPServer {
-  private server: Server;
-  private prisma: PrismaClient;
+  private server: any;
+  private prisma: PrismaService;
   private problemsService: ProblemsService;
   private usersService: UsersService;
   private submissionsService: SubmissionsService;
@@ -21,7 +46,7 @@ class StandaloneMCPServer {
   private sandboxService: SandboxService;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    this.prisma = {} as any; // No real PrismaService in standalone
     this.initializeServices();
     this.initializeServer();
   }
@@ -31,62 +56,44 @@ class StandaloneMCPServer {
     this.usersService = new UsersService(this.prisma);
     this.submissionsService = new SubmissionsService(this.prisma);
     this.resourcesService = new ResourcesService(this.prisma);
-    this.sandboxService = new SandboxService();
+    this.sandboxService = new SandboxService({} as any);
   }
 
   private initializeServer() {
-    this.server = new Server(
-      {
-        name: 'vibe-backend-mcp-server',
-        version: '1.0.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      },
-    );
-
+    this.server = new McpServer({
+      name: 'vibe-backend-mcp-server',
+      version: '1.0.0',
+    });
     this.registerTools();
     this.server.connect(new StdioServerTransport());
   }
 
   private registerTools() {
     const availableFunctions = this.getAvailableFunctions();
-    const tools = availableFunctions.map(funcName => this.createToolFromFunction(funcName));
-
-    this.server.setRequestHandler('tools/list', async () => {
-      return {
-        tools: tools,
-      };
-    });
-
-    this.server.setRequestHandler('tools/call', async (request) => {
-      const { name, arguments: args } = request.params;
-      
-      try {
-        const result = await this.handleMCPCall(name, args);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      } catch (error) {
-        console.error(`Error executing MCP function ${name}:`, error);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: ${error.message}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    });
+    for (const funcName of availableFunctions) {
+      const definition = this.getToolDefinition(funcName);
+      this.server.registerTool(
+        funcName,
+        {
+          description: definition.description,
+          inputSchema: jsonSchemaToZodShape(definition.inputSchema),
+        },
+        async (args: any) => {
+          try {
+            const result = await this.handleMCPCall(funcName, args);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            };
+          } catch (error) {
+            console.error(`Error executing MCP function ${funcName}:`, error);
+            return {
+              content: [{ type: 'text', text: `Error: ${error.message}` }],
+              isError: true,
+            };
+          }
+        },
+      );
+    }
   }
 
   private getAvailableFunctions(): string[] {
@@ -120,22 +127,32 @@ class StandaloneMCPServer {
   }
 
   private async getProblemByTopic(args: any) {
-    const { topic, complexity, excludeIds } = args ?? {};
-    if (!topic || !complexity) {
-      throw new Error('topic and complexity are required');
+    let { topic, complexity, excludeIds } = args ?? {};
+
+    if (!topic) {
+      const allTopics = await this.problemsService.findAllUniqueTopics();
+      if (allTopics.length > 0) {
+        topic = allTopics[Math.floor(Math.random() * allTopics.length)];
+      } else {
+        throw new Error('No topics available to choose from.');
+      }
     }
-    const comp = (complexity as string).toUpperCase();
-    const problem = await this.problemsService.findOneByTopicAndDifficulty(
+
+    if (!complexity) {
+      const complexities: ProblemComplexity[] = ['EASY', 'MEDIUM', 'HARD'];
+      complexity = complexities[Math.floor(Math.random() * complexities.length)];
+    }
+
+    return this.problemsService.findOneByTopicAndDifficulty(
       topic,
-      comp,
+      (complexity as string).toUpperCase() as ProblemComplexity,
       excludeIds,
     );
-    return problem;
   }
 
   private async fetchUserHistory(args: any) {
     const { userId } = args ?? {};
-    if (!userId) throw new Error('userId required');
+    if (!userId) throw new Error('userId is required');
     const user = await this.usersService.findById(userId);
     const stats = await this.usersService.getUserStats(userId);
     return { user, stats };
@@ -143,13 +160,13 @@ class StandaloneMCPServer {
 
   private async fetchLearningResources(args: any) {
     const { topic } = args ?? {};
-    if (!topic) throw new Error('topic required');
+    if (!topic) throw new Error('topic is required');
     return this.resourcesService.findByTopic(topic);
   }
 
   private async checkSolutionHistory(args: any) {
     const { userId, limit = 10 } = args ?? {};
-    if (!userId) throw new Error('userId required');
+    if (!userId) throw new Error('userId is required');
     const submissions = await this.submissionsService.findByUser(userId);
     return submissions.slice(0, limit);
   }
@@ -159,41 +176,20 @@ class StandaloneMCPServer {
     if (!code || !language || !problemId || !userId) {
       throw new Error('code, language, problemId, and userId are required');
     }
-    
     const problem = await this.problemsService.findById(problemId);
     if (!problem) throw new Error('Invalid problemId');
-    
     const execResult = await this.sandboxService.executeCode(
       code,
       language,
       problem.testCases,
     );
-
-    // Persist submission
-    let status: string;
-    let failedTestCaseId: number | null = null;
-
-    if (execResult.compileError) {
-      status = 'ERROR';
-    } else if (execResult.allPassed) {
-      status = 'PASSED';
-    } else {
-      status = 'FAILED';
-      const failedTest = execResult.results.find((r) => !r.passed);
-      if (failedTest && failedTest.id) {
-        failedTestCaseId = failedTest.id;
-      }
-    }
-
     await this.submissionsService.create({
       userId,
       problemId,
       code,
       language,
-      status,
-      failedTestCaseId,
+      status: execResult.allPassed ? 'PASSED' : 'FAILED',
     });
-
     return execResult;
   }
 
@@ -201,27 +197,17 @@ class StandaloneMCPServer {
     return this.problemsService.findAllUniqueTopics();
   }
 
-  private createToolFromFunction(functionName: string): Tool {
-    const toolDefinitions = {
+  private getToolDefinition(functionName: string): any {
+    // Duplicated from mcp.service.ts for standalone usage.
+    const toolDefinitions: Record<string, { description: string, inputSchema: any }> = {
       get_problem_by_topic: {
         description: 'Get a coding problem by topic and complexity level',
         inputSchema: {
           type: 'object',
           properties: {
-            topic: {
-              type: 'string',
-              description: 'The topic of the problem (e.g., arrays, dynamic programming)',
-            },
-            complexity: {
-              type: 'string',
-              enum: ['easy', 'medium', 'hard'],
-              description: 'The complexity level of the problem',
-            },
-            excludeIds: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Problem IDs to exclude from the search',
-            },
+            topic: { type: 'string', description: 'The topic of the problem (e.g., arrays, dynamic programming)' },
+            complexity: { type: 'string', enum: ['EASY', 'MEDIUM', 'HARD'], description: 'The complexity level of the problem' },
+            excludeIds: { type: 'array', items: { type: 'string' }, description: 'Problem IDs to exclude from the search' },
           },
           required: ['topic', 'complexity'],
         },
@@ -230,12 +216,7 @@ class StandaloneMCPServer {
         description: 'Fetch user history and statistics',
         inputSchema: {
           type: 'object',
-          properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to fetch history for',
-            },
-          },
+          properties: { userId: { type: 'string', description: 'The user ID to fetch history for' } },
           required: ['userId'],
         },
       },
@@ -243,12 +224,7 @@ class StandaloneMCPServer {
         description: 'Fetch learning resources for a specific topic',
         inputSchema: {
           type: 'object',
-          properties: {
-            topic: {
-              type: 'string',
-              description: 'The topic to fetch resources for',
-            },
-          },
+          properties: { topic: { type: 'string', description: 'The topic to fetch resources for' } },
           required: ['topic'],
         },
       },
@@ -257,15 +233,8 @@ class StandaloneMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
-            userId: {
-              type: 'string',
-              description: 'The user ID to check history for',
-            },
-            limit: {
-              type: 'number',
-              description: 'Maximum number of submissions to return',
-              default: 10,
-            },
+            userId: { type: 'string', description: 'The user ID to check history for' },
+            limit: { type: 'number', description: 'Maximum number of submissions to return', default: 10 },
           },
           required: ['userId'],
         },
@@ -275,22 +244,10 @@ class StandaloneMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
-            code: {
-              type: 'string',
-              description: 'The code to execute',
-            },
-            language: {
-              type: 'string',
-              description: 'The programming language',
-            },
-            problemId: {
-              type: 'string',
-              description: 'The problem ID for context',
-            },
-            userId: {
-              type: 'string',
-              description: 'The user ID executing the code',
-            },
+            code: { type: 'string', description: 'The code to execute' },
+            language: { type: 'string', description: 'The programming language' },
+            problemId: { type: 'string', description: 'The problem ID for context' },
+            userId: { type: 'string', description: 'The user ID executing the code' },
           },
           required: ['code', 'language', 'problemId', 'userId'],
         },
@@ -303,17 +260,7 @@ class StandaloneMCPServer {
         },
       },
     };
-
-    const definition = toolDefinitions[functionName];
-    if (!definition) {
-      throw new Error(`No tool definition found for function: ${functionName}`);
-    }
-
-    return {
-      name: functionName,
-      description: definition.description,
-      inputSchema: definition.inputSchema,
-    };
+    return toolDefinitions[functionName];
   }
 
   async start() {
@@ -321,23 +268,19 @@ class StandaloneMCPServer {
   }
 
   async stop() {
-    await this.prisma.$disconnect();
+    // (this.prisma as any)?.$disconnect?.();
     console.log('MCP Server stopped');
   }
 }
 
-// Start the server if this file is run directly
 if (require.main === module) {
   const server = new StandaloneMCPServer();
-  
+  server.start();
   process.on('SIGINT', async () => {
-    console.log('Shutting down MCP Server...');
     await server.stop();
     process.exit(0);
   });
-  
   process.on('SIGTERM', async () => {
-    console.log('Shutting down MCP Server...');
     await server.stop();
     process.exit(0);
   });

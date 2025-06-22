@@ -16,7 +16,9 @@ export class MCPService {
     private readonly sandboxService: SandboxService,
   ) {}
 
-  async handleMCPCall(functionName: string, args: any) {
+  async handleMCPCall(functionName: string, args: any): Promise<any> {
+    const { userId } = args;
+
     switch (functionName) {
       case 'get_problem_by_topic':
         return this.getProblemByTopic(args);
@@ -49,17 +51,29 @@ export class MCPService {
   }
 
   private async getProblemByTopic(args: any) {
-    const { topic, complexity, excludeIds } = args ?? {};
-    if (!topic || !complexity) {
-      throw new BadRequestException('topic and complexity are required');
+    let { topic, complexity, excludeIds } = args ?? {};
+
+    if (!topic) {
+      const allTopics = await this.problemsService.findAllUniqueTopics();
+      if (allTopics.length > 0) {
+        topic = allTopics[Math.floor(Math.random() * allTopics.length)];
+      } else {
+        throw new BadRequestException('No topics available.');
+      }
     }
-    const comp = (complexity as string).toUpperCase() as ProblemComplexity;
-    const problem = await this.problemsService.findOneByTopicAndDifficulty(
+
+    if (!complexity) {
+      const complexities: ProblemComplexity[] = ['EASY', 'MEDIUM', 'HARD'];
+      complexity = complexities[Math.floor(Math.random() * complexities.length)];
+    }
+
+    const problemComplexity = (complexity as string).toUpperCase() as ProblemComplexity;
+
+    return this.problemsService.findOneByTopicAndDifficulty(
       topic,
-      comp,
+      problemComplexity,
       excludeIds,
     );
-    return problem;
   }
 
   private async fetchUserHistory(args: any) {
